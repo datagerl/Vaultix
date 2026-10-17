@@ -12,12 +12,12 @@ jest.mock("@/components/stellar/TransactionTracker", () => {
   return () => <div data-testid="transaction-tracker">Transaction Tracker Mock</div>;
 });
 
-jest.mock("@/services/escrow", () => ({
-  EscrowService: { releaseEscrow: jest.fn() },
+jest.mock("@/lib/api-client", () => ({
+  apiClient: { post: jest.fn() },
 }));
 
-import { EscrowService } from "@/services/escrow";
-const releaseEscrow = EscrowService.releaseEscrow as jest.Mock;
+import { apiClient } from "@/lib/api-client";
+const releaseEscrow = apiClient.post as jest.Mock;
 
 const mockEscrow: IEscrowExtended = {
   id: "escrow_123",
@@ -130,7 +130,11 @@ describe("ReleaseFundsModal", () => {
     });
     expect(screen.getByText("tx_hash_123")).toBeInTheDocument();
     expect(screen.getByTestId("transaction-tracker")).toBeInTheDocument();
-    expect(releaseEscrow).toHaveBeenCalledWith("escrow_123");
+    expect(releaseEscrow).toHaveBeenCalledWith(
+      "/escrows/escrow_123/release",
+      undefined,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it("handles API error during release", async () => {

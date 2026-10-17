@@ -1,34 +1,28 @@
 "use client";
 
-import React, { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { Wallet, LogOut, Copy, Check, AlertCircle } from 'lucide-react';
-import { useWalletConnection } from '@/app/hooks/useWallet';
-import { ConnectWalletModal } from './ConnectWalletModal';
-import { truncateAddress } from '@/lib/utils';
-import { useSession } from '@/hooks/useSession';
-import { clearSession } from '@/lib/session';
-import { safeReturnTo } from '@/lib/return-to';
-
-export const WalletButton: React.FC = () => {
-  const { isConnected: isWalletConnected, wallet, disconnect, network } = useWalletConnection();
-  const session = useSession();
-  const router = useRouter();
-  const pathname = usePathname();
 import React, { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Wallet, LogOut, Copy, Check, AlertCircle } from "lucide-react";
 import { useWalletConnection } from "@/app/hooks/useWallet";
+import { useWallet } from "@/app/contexts/WalletContext";
 import { ConnectWalletModal } from "./ConnectWalletModal";
 import { truncateAddress } from "@/lib/utils";
+import { useSession } from "@/hooks/useSession";
+import { clearSession } from "@/lib/session";
+import { safeReturnTo } from "@/lib/return-to";
 import {
   getConfiguredStellarNetwork,
   isStellarNetworkMismatch,
 } from "@/app/services/wallet/network";
-import { useWallet } from "@/app/contexts/WalletContext";
 
 export const WalletButton: React.FC = () => {
-  const { isConnected, wallet, disconnect, network } = useWalletConnection();
+  const { isConnected: isWalletConnected, wallet, disconnect, network } =
+    useWalletConnection();
   const { refreshNetwork } = useWallet();
+  const session = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const targetNetwork = getConfiguredStellarNetwork();
   const networkMismatch = isStellarNetworkMismatch(network);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,16 +30,12 @@ export const WalletButton: React.FC = () => {
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [isRefreshingNetwork, setIsRefreshingNetwork] = useState(false);
 
-  // A restored wallet connection is not proof of identity: the user is only
-  // "connected" here once a session exists for that same wallet.
-  const isConnected = isWalletConnected && !!wallet && session?.walletAddress === wallet.publicKey;
+  const isConnected =
+    isWalletConnected && !!wallet && session?.walletAddress === wallet.publicKey;
 
   const handleSignedIn = () => {
-    const returnTo = new URLSearchParams(window.location.search).get('returnTo');
-    if (returnTo || pathname === '/') {
-      // Full navigation, not router.push: routes prefetched while signed out
-      // cached the middleware's redirect to "/", which a client-side
-      // transition would replay.
+    const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+    if (returnTo || pathname === "/") {
       window.location.assign(safeReturnTo(returnTo));
     } else {
       router.refresh();
@@ -81,9 +71,12 @@ export const WalletButton: React.FC = () => {
         <button
           onClick={() => setIsModalOpen(true)}
           className="min-h-[44px] flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+          type="button"
         >
           <Wallet className="w-4 h-4" aria-hidden="true" />
-          <span className="font-medium">{isWalletConnected ? 'Sign In' : 'Connect Wallet'}</span>
+          <span className="font-medium">
+            {isWalletConnected ? "Sign In" : "Connect Wallet"}
+          </span>
         </button>
 
         <ConnectWalletModal
@@ -98,7 +91,6 @@ export const WalletButton: React.FC = () => {
   return (
     <div className="relative">
       <div className="flex items-center space-x-3">
-        {/* Network Indicator */}
         {networkMismatch && (
           <div
             role="alert"
@@ -121,42 +113,40 @@ export const WalletButton: React.FC = () => {
           </div>
         )}
 
-        {/* Wallet Info */}
         <div className="flex items-center space-x-2 px-3 py-2 bg-gray-800 rounded-lg">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           <span className="text-sm text-gray-300">
-            {truncateAddress(wallet!.publicKey)}
+            {wallet ? truncateAddress(wallet.publicKey) : "Wallet"}
           </span>
         </div>
 
-        {/* Actions Dropdown Trigger */}
         <button
           onClick={() => setShowDisconnect(!showDisconnect)}
           className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
           aria-label="Wallet menu"
           aria-expanded={showDisconnect}
+          type="button"
         >
           <Wallet className="w-4 h-4 text-gray-300" />
         </button>
       </div>
 
-      {/* Dropdown Menu */}
       {showDisconnect && (
         <div className="absolute right-0 mt-2 w-64 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50">
           <div className="p-4">
-            {/* Wallet Info */}
             <div className="mb-4">
               <p className="text-xs text-gray-500 mb-1">Connected with</p>
               <p className="text-sm font-medium text-white capitalize">
-                {wallet!.walletType}
+                {wallet?.walletType}
               </p>
               <div className="flex items-center justify-between mt-2">
                 <p className="text-sm text-gray-400">
-                  {truncateAddress(wallet!.publicKey, 12)}
+                  {wallet ? truncateAddress(wallet.publicKey, 12) : ""}
                 </p>
                 <button
                   onClick={handleCopyAddress}
                   className="p-1 hover:bg-gray-800 rounded transition-colors"
+                  type="button"
                 >
                   {copied ? (
                     <Check className="w-4 h-4 text-green-400" />
@@ -167,12 +157,11 @@ export const WalletButton: React.FC = () => {
               </div>
             </div>
 
-            {/* Network Info */}
             <div className="mb-4 p-3 bg-gray-800/50 rounded-lg">
               <p className="text-xs text-gray-500 mb-1">Network</p>
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-300 capitalize">
-                  {wallet!.network}
+                  {wallet?.network ?? "unknown"}
                 </p>
                 {!networkMismatch ? (
                   <div className="flex items-center space-x-1">
@@ -188,10 +177,10 @@ export const WalletButton: React.FC = () => {
               </div>
             </div>
 
-            {/* Disconnect Button */}
             <button
               onClick={handleDisconnect}
               className="w-full flex items-center justify-center space-x-2 py-2 px-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+              type="button"
             >
               <LogOut className="w-4 h-4" />
               <span className="font-medium">Disconnect</span>
@@ -200,7 +189,6 @@ export const WalletButton: React.FC = () => {
         </div>
       )}
 
-      {/* Click outside to close dropdown */}
       {showDisconnect && (
         <div
           className="fixed inset-0 z-40"
@@ -210,3 +198,4 @@ export const WalletButton: React.FC = () => {
     </div>
   );
 };
+

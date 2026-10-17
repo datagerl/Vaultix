@@ -1,12 +1,12 @@
-import albedo from '@albedo-link/intent';
-import { toHexSignature } from '@/lib/signature';
 import albedo from "@albedo-link/intent";
+import { toHexSignature } from "@/lib/signature";
 import { normalizeStellarNetwork } from "./network";
 
 export interface AlbedoIntentResult {
   signed_envelope_xdr?: string;
   pubkey?: string;
   signature?: string;
+  message_signature?: string | Uint8Array | null;
 }
 
 export class AlbedoService {
@@ -23,8 +23,7 @@ export class AlbedoService {
 
   async connect(): Promise<string> {
     try {
-      const result = await this.publicKey();
-      return result;
+      return await this.publicKey();
     } catch (error: any) {
       if (error.message?.includes("rejected")) {
         throw new Error("Albedo connection was rejected by the user.");
@@ -37,10 +36,11 @@ export class AlbedoService {
     const network = normalizeStellarNetwork(
       process.env.NEXT_PUBLIC_STELLAR_NETWORK || "testnet",
     );
-    if (!network)
+    if (!network) {
       throw new Error(
         "The configured Stellar network is not supported by Albedo.",
       );
+    }
     return network;
   }
 
@@ -66,33 +66,31 @@ export class AlbedoService {
   async signMessage(message: string, publicKey: string): Promise<string> {
     try {
       const result = await albedo.signMessage({ message, pubkey: publicKey });
-      return toHexSignature(result.message_signature);
+      return toHexSignature(result.message_signature ?? null);
     } catch (error: any) {
-      if (error.message?.includes('rejected')) {
-        throw new Error('Message signing was rejected by the user.');
+      if (error.message?.includes("rejected")) {
+        throw new Error("Message signing was rejected by the user.");
       }
       throw new Error(`Failed to sign message with Albedo: ${error.message}`);
     }
   }
 
-  private getNetworkParam(): 'public' | 'testnet' {
-    const network = process.env.NEXT_PUBLIC_STELLAR_NETWORK || 'testnet';
-    return network === 'mainnet' ? 'public' : 'testnet';
   private getNetworkParam(): "public" | "testnet" {
     const network = normalizeStellarNetwork(
       process.env.NEXT_PUBLIC_STELLAR_NETWORK || "testnet",
     );
-    if (!network)
+    if (!network) {
       throw new Error(
         "The configured Stellar network is not supported by Albedo.",
       );
-    return network;
+    }
+    return network === "public" ? "public" : "testnet";
   }
 
   private async publicKey(): Promise<string> {
     try {
       const result = await albedo.publicKey({});
-      return result.pubkey;
+      return result.pubkey || "";
     } catch (error: any) {
       if (error.message?.includes("rejected")) {
         throw new Error("Albedo connection was rejected by the user.");
@@ -101,3 +99,4 @@ export class AlbedoService {
     }
   }
 }
+

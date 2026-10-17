@@ -6,17 +6,19 @@ import {
 } from "./ConnectWalletModal";
 import { useWallet } from "@/app/contexts/WalletContext";
 
-// Mock useWallet hook
 jest.mock("@/app/contexts/WalletContext", () => ({
   useWallet: jest.fn(),
 }));
 
-// Sign-in is covered in __tests__/ConnectWalletModal.spec.tsx and useWalletAuth.test.ts.
-jest.mock('@/hooks/useWalletAuth', () => ({
-  useWalletAuth: () => ({ signIn: jest.fn().mockResolvedValue(true), loading: false, error: null, token: null }),
+jest.mock("@/hooks/useWalletAuth", () => ({
+  useWalletAuth: () => ({
+    signIn: jest.fn().mockResolvedValue(true),
+    loading: false,
+    error: null,
+    token: null,
+  }),
 }));
 
-describe('ConnectWalletModal', () => {
 describe("ConnectWalletModal", () => {
   const mockOnClose = jest.fn();
   const mockConnect = jest.fn();
@@ -51,7 +53,6 @@ describe("ConnectWalletModal", () => {
     render(<ConnectWalletModal isOpen={true} onClose={mockOnClose} />);
 
     await waitFor(() => screen.getByText("Freighter"));
-
     fireEvent.click(screen.getByText("Freighter"));
 
     expect(mockConnect).toHaveBeenCalledWith("freighter");
@@ -93,3 +94,4 @@ describe("ConnectWalletModal", () => {
     ).toContain(expected);
   });
 });
+

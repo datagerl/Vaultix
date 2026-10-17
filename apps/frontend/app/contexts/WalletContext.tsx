@@ -32,7 +32,6 @@ interface WalletContextType {
   connect: (walletType: WalletType) => Promise<WalletConnection>;
   targetNetwork: string | null;
   isNetworkMismatch: boolean;
-  connect: (walletType: WalletType) => Promise<void>;
   switchAccount: (publicKey: string) => void;
   disconnect: (publicKey?: string) => void;
   signTransaction: (xdr: string) => Promise<string>;
@@ -47,20 +46,13 @@ interface WalletProviderProps {
 }
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
-  const [connectedAccounts, setConnectedAccounts] = useState<
-    WalletConnection[]
-  >([]);
-  const [activeAccount, setActiveAccount] = useState<WalletConnection | null>(
-    null,
-  );
+  const [connectedAccounts, setConnectedAccounts] = useState<WalletConnection[]>([]);
+  const [activeAccount, setActiveAccount] = useState<WalletConnection | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load connected wallets from localStorage on mount
   useEffect(() => {
-    const savedWallets = window.localStorage.getItem(
-      "vaultix_connected_wallets",
-    );
+    const savedWallets = window.localStorage.getItem("vaultix_connected_wallets");
     const legacyWallet = window.localStorage.getItem("vaultix_wallet");
 
     if (savedWallets) {
@@ -74,7 +66,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         window.localStorage.removeItem("vaultix_connected_wallets");
       }
     } else if (legacyWallet) {
-      // Migrate legacy single wallet setup
       try {
         const parsed = JSON.parse(legacyWallet) as WalletConnection;
         setConnectedAccounts([parsed]);
@@ -107,7 +98,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
-  const connect = async (walletType: WalletType) => {
+  const connect = async (walletType: WalletType): Promise<WalletConnection> => {
     setIsConnecting(true);
     setError(null);
 
@@ -127,21 +118,18 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         network,
       };
 
-      // Check if account already exists in connected list, otherwise append or insert
       const filtered = connectedAccounts.filter(
         (acc) => acc.publicKey !== publicKey,
       );
       const updatedAccounts = [newConnection, ...filtered];
-
       const previousActiveKey = activeAccount?.publicKey;
+
       setConnectedAccounts(updatedAccounts);
       setActiveAccount(newConnection);
       window.localStorage.setItem(
         "vaultix_connected_wallets",
         JSON.stringify(updatedAccounts),
       );
-
-      // Keep legacy key in sync for backward compatibility
       window.localStorage.setItem(
         "vaultix_wallet",
         JSON.stringify(newConnection),
@@ -152,6 +140,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           new CustomEvent("wallet:switched", { detail: newConnection }),
         );
       }
+
       return newConnection;
     } catch (err: any) {
       setError(err.message || "Failed to connect wallet");
@@ -195,7 +184,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         }
       }
     } else {
-      // Full disconnect of all accounts
       setConnectedAccounts([]);
       setActiveAccount(null);
       window.localStorage.removeItem("vaultix_connected_wallets");
@@ -216,12 +204,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       : activeAccount.network;
     const normalizedNetwork =
       normalizeStellarNetwork(currentNetwork) || "unknown";
+
     if (normalizedNetwork !== activeAccount.network) {
       const updatedAccount = { ...activeAccount, network: normalizedNetwork };
       const updatedAccounts = connectedAccounts.map((account) =>
-        account.publicKey === activeAccount.publicKey
-          ? updatedAccount
-          : account,
+        account.publicKey === activeAccount.publicKey ? updatedAccount : account,
       );
       setActiveAccount(updatedAccount);
       setConnectedAccounts(updatedAccounts);
@@ -234,6 +221,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         JSON.stringify(updatedAccount),
       );
     }
+
     if (isStellarNetworkMismatch(currentNetwork)) {
       const targetNetwork = getConfiguredStellarNetwork();
       const expected = targetNetwork ?? "the configured Stellar network";
@@ -243,6 +231,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         `Transaction signing is blocked because this wallet is on ${actual}; switch it to ${expected} and reconnect.`,
       );
     }
+
     try {
       return await service.signTransaction(xdr, activeAccount.publicKey);
     } catch (error) {
@@ -296,7 +285,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   return (
     <WalletContext.Provider
       value={{
-        wallet: activeAccount, // Backward compatibility for single-wallet consumers
+        wallet: activeAccount,
         activeAccount,
         connectedAccounts,
         isConnecting,
@@ -323,3 +312,4 @@ export const useWallet = () => {
   }
   return context;
 };
+
