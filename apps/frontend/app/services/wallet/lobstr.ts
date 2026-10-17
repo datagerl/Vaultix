@@ -2,7 +2,14 @@ import { toHexSignature } from '@/lib/signature';
 
 declare global {
   interface Window {
-    lobstr?: any;
+    lobstr?: {
+      getPublicKey: () => Promise<string>;
+      getNetwork?: () => Promise<unknown>;
+      network?: string;
+      signTransaction: (xdr: string) => Promise<unknown>;
+      /** Not available in every Lobstr version; required for sign-in. */
+      signMessage?: (message: string) => Promise<string | Uint8Array>;
+    };
   }
 }
 
@@ -33,7 +40,7 @@ export class LobstrService {
     }
     try {
       const publicKey = await window.lobstr.getPublicKey();
-      return publicKey;
+      return String(publicKey);
     } catch (error: any) {
       throw new Error(`Failed to connect to Lobstr: ${error.message}`);
     }
@@ -45,13 +52,13 @@ export class LobstrService {
     }
     try {
       const signedXdr = await window.lobstr.signTransaction(xdr);
-      return signedXdr;
+      return String(signedXdr);
     } catch (error: any) {
       throw new Error(`Failed to sign transaction with Lobstr: ${error.message}`);
     }
   }
 
-  async signMessage(message: string): Promise<string> {
+  async signMessage(message: string, _publicKey?: string): Promise<string> {
     if (typeof window === 'undefined' || !window.lobstr) {
       throw new Error('Lobstr wallet is not installed');
     }
