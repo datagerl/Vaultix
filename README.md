@@ -20,7 +20,7 @@ QuickEx is a Soroban-based dApp built on Stellar, utilizing:
 - **Stellar Blockchain**: For fast, low-cost token transfers
 - **Soroban Smart Contracts**: For on-chain escrow logic (Rust-based)
 - **Stellar SDK**: For transaction building and submission
-- **Freighter Wallet**: For user wallet interactions
+- **Stellar Wallets**: Freighter, xBull, Lobstr, and Albedo adapters for user wallet interactions
 
 ## 🎯 MVP Scope (8-Week Timeline)
 
@@ -56,6 +56,7 @@ QuickEx is a Soroban-based dApp built on Stellar, utilizing:
 - **[Contract Events](docs/contract/EVENTS.md)** - Event schema reference for indexers and consumers
 - **[Mobile Security](docs/mobile-security.md)** - Environment setup, secure storage, and testnet switching
 - **[Mobile Notifications](docs/mobile-notifications.md)** - Push notification strategy and MVP notes
+- **[Idempotency Keys](docs/idempotency.md)** - `Idempotency-Key` header for safe retries on escrow mutations
 - **[Notification Preferences and Digest](docs/notification-preferences.md)** - Per-channel preferences and daily email digest
 - **[Dispute Flow](docs/dispute-flow.md)** - Dispute resolution process and UX
 - **[API Reference](http://localhost:3000/api/docs)** - Backend API documentation (after running backend)
@@ -88,6 +89,36 @@ vaultix/
 For workflows, see [DEVELOPMENT.md](DEVELOPMENT.md). API docs in [API.md](API.md).
 
 ## 🛠️ Local Development
+## Docker: Local Full Stack
+
+Prerequisites: Docker Engine and Docker Compose v2.24+ on Linux, or Docker
+Desktop on macOS/Windows. From the repository root, create a local env file and
+start the `full` profile:
+
+```bash
+cp .env.example .env
+docker compose --profile full up --build
+```
+
+The web app is available at <http://localhost:3001>, the API at
+<http://localhost:3000>, and PostgreSQL at `localhost:5432`. The example
+Postgres credentials and JWT secret are for local development only; replace
+them in `.env` before using this stack outside a local machine. The backend
+waits for the database health check, then TypeORM applies pending migrations
+during application startup. The frontend starts after the backend responds to
+its liveness check.
+
+`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_API_BASE_URL`,
+`NEXT_PUBLIC_WS_URL`, and `NEXT_PUBLIC_STELLAR_NETWORK` are build arguments and
+are embedded in the frontend bundle. Rebuild the frontend after changing them.
+Other server-only values in `.env` are loaded by the containers at runtime.
+Commands shown use a POSIX shell; on Windows, run them in a WSL 2 shell with
+Docker Desktop WSL integration, or adapt them to PowerShell syntax.
+
+Stop the stack with `docker compose --profile full down`; the named Postgres
+volume is retained.
+
+## 🛠️ Local Development
 
 Get QuickEx running locally in minutes. This setup covers all three apps: frontend, backend, and onchain smart contract.
 
@@ -95,17 +126,24 @@ Get QuickEx running locally in minutes. This setup covers all three apps: fronte
 
 Before you begin, ensure you have the following installed:
 
+- **GNU Make** - For the root development and verification targets
 - **Node.js** 20+ ([Download](https://nodejs.org)) - JavaScript runtime
 - **npm** 10+ (bundled with Node.js 20+) - Package manager (see [Package manager](#package-manager))
 - **PostgreSQL** 14+ ([Download](https://www.postgresql.org)) OR **SQLite** (for simpler setup)
 - **Rust** latest stable ([Download](https://rustup.rs)) - For Soroban smart contracts
 - **Soroban CLI** (`cargo install --locked soroban-cli`) - For contract deployment
 - **Git** - Version control
-- **Stellar Wallet** - Freighter or Lobster wallet browser extension ([Install Freighter](https://freighter.app))
+- **Stellar Wallet** - Freighter, xBull, or Lobstr browser extension, or the Albedo web wallet ([Freighter](https://www.freighter.app/), [xBull](https://chromewebstore.google.com/detail/xbull-wallet/omajpeaffjgmlpmhbfdjepdejoemifpe), [Lobstr](https://lobstr.co/vault/), [Albedo](https://albedo.link/))
 
 **Optional:**
-- **Docker** - For containerized PostgreSQL
+- **Docker with Compose** - For `./scripts/setup.sh --with-db`
+- **Rust/Cargo** - For on-chain contract development and tests
 - **VS Code** with Rust Analyzer, ESLint, Prettier extensions
+
+Check your local tool versions, required development environment variables, and
+default service ports with `./scripts/doctor.sh`. See the
+[environment diagnostics guide](docs/ENVIRONMENT.md#environment-diagnostics)
+for details and JSON output for CI.
 
 ### Package manager
 
@@ -160,27 +198,30 @@ Please keep `--no-verify` for emergencies only - CI runs the same checks.
    cd vaultix
    ```
 
-2. **Install dependencies**. From the repository root (this also installs the
-   root tooling and the husky git hooks):
+2. **Bootstrap the monorepo**. From the repository root, this copies available
+   env templates without overwriting existing files and installs dependencies
+   for the root and all three apps:
    ```bash
-   npm install
+   ./scripts/setup.sh
    ```
 
-   Each app is an independent package with its own dependencies:
+   To also start local PostgreSQL and run backend migrations:
    ```bash
-   npm --prefix apps/backend install
-   npm --prefix apps/frontend install
-   npm --prefix apps/mobile install   # optional (React Native app)
+   ./scripts/setup.sh --with-db
    ```
+
+   `--with-db` requires Docker Compose and uses the local credentials in
+   `apps/backend/docker-compose.yml`. It does not change an existing backend
+   `.env`; set `DATABASE_URL` there if the running backend should use PostgreSQL
+   instead of its default SQLite configuration. On Windows, run the script in
+   WSL (recommended) or Git Bash with Node/npm and any requested tools on PATH.
 
 3. **Set up environment variables**:
-   
-   **Backend** (`apps/backend/.env`):
-   ```bash
-   cp apps/backend/.env.example apps/backend/.env
-   ```
-   
-   Edit `apps/backend/.env` with your configuration:
+
+   The bootstrap creates `apps/backend/.env`, `apps/frontend/.env`, and
+   `apps/mobile/.env` from their examples only when those files do not already
+   exist. Edit the backend file with your local configuration and replace the
+   example secrets before starting the backend:
    ```env
    # Database Configuration
    DATABASE_PATH=./data/vaultix.db  # SQLite path (or use DATABASE_URL for PostgreSQL)
@@ -210,12 +251,8 @@ Please keep `--no-verify` for emergencies only - CI runs the same checks.
    EMAIL_FROM=no-reply@vaultix.io
    ```
    
-   **Frontend** (`apps/frontend/.env.local`):
-   ```bash
-   cp apps/frontend/.env.example apps/frontend/.env.local
-   ```
-   
-   Create `apps/frontend/.env.local`:
+   Review `apps/frontend/.env` and set the backend URL if it differs from the
+   local default:
    ```env
    NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
    NEXT_PUBLIC_STELLAR_NETWORK=testnet
@@ -232,27 +269,26 @@ Please keep `--no-verify` for emergencies only - CI runs the same checks.
 
 **Run the services (Recommended)**
 
-The backend and the frontend are separate apps and are started in separate
-terminals:
+Start the backend and frontend development servers together from the repository
+root:
 
 ```bash
-# Terminal 1 - Backend
-cd apps/backend
-npm run start:dev
-
-# Terminal 2 - Frontend
-cd apps/frontend
-npm run dev
+make dev
 
 # Terminal 3 - Watch onchain contracts (optional)
 cd apps/onchain
 cargo build --target wasm32v1-none --release
 ```
 
+Run `make help` for the available development, test, lint, build, database, and
+contract-test targets. See [CONTRIBUTING.md](CONTRIBUTING.md#make-targets) for
+prerequisites and details; `make db-reset` deletes the local PostgreSQL data
+volume.
+
 ### Testing Your Setup
 
 1. **Open frontend**: Navigate to http://localhost:3001
-2. **Connect wallet**: Click "Connect Wallet" and approve Freighter connection
+2. **Connect wallet**: Click "Connect Wallet", choose an available Stellar wallet, and approve its connection request. The wallet must be set to the network configured by `NEXT_PUBLIC_STELLAR_NETWORK` (defaults to testnet); signing is blocked until the network matches.
 3. **Create test escrow**: Go to Create Escrow page and set up a mock transaction
 4. **Check backend**: Visit http://localhost:3000/api/docs to explore API endpoints
 
@@ -278,8 +314,8 @@ cd apps/frontend && npm run lint
 ```
 
 **Wallet connection issues**:
-- Make sure Freighter/Lobster extension is installed
-- Switch wallet to **Testnet** network
+- Install one of the supported wallets (Freighter, xBull, or Lobstr) or use Albedo from the wallet picker
+- Switch your wallet to the network configured by `NEXT_PUBLIC_STELLAR_NETWORK` (default: **Testnet**); the connected-wallet warning identifies a mismatch, and transactions cannot be signed until it is corrected
 - Ensure you have test XLM (get from [Stellar Laboratory](https://laboratory.stellar.org))
 
 **Build errors**:
@@ -426,7 +462,7 @@ vaultix/
 
 #### 1. Authentication & Wallet Connect
 1. User visits frontend and clicks "Connect Wallet"
-2. Freighter wallet popup requests connection approval
+2. User selects an available wallet and approves the connection request
 3. Frontend calls backend `/auth/wallet-connect` with public key
 4. Backend creates/updates user, returns JWT token
 5. Frontend stores JWT in localStorage, attaches to subsequent requests
@@ -436,7 +472,7 @@ vaultix/
 2. Fills form: recipient, amount, milestones, deadline
 3. Frontend calls POST `/api/escrows` with escrow details
 4. Backend creates escrow record, returns escrow ID
-5. User approves Stellar transaction via Freighter
+5. User approves the Stellar transaction via the connected wallet
 6. Frontend submits transaction to Stellar network
 7. Backend webhook receives event, updates escrow status to "funded"
 

@@ -1,11 +1,20 @@
 @import "tailwindcss";
 /* @import "shadcn/tailwind.css"; */
 
-@custom-variant dark (&:is(.dark *));
+/*
+ * Theming: the `.dark` class on <html> is set before first paint by the inline
+ * script in app/layout.tsx (see lib/theme.ts). Use the semantic tokens below
+ * (bg-background, text-muted-foreground, bg-brand…) instead of raw palette
+ * colours so components work in both themes. Token pairs are checked for
+ * WCAG AA contrast in lib/theme-contrast.test.ts.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --font-sans: Arial, Helvetica, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -47,7 +56,10 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.625rem;
+  --brand: oklch(0.546 0.245 262.881);
+  --brand-foreground: oklch(1 0 0);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -59,7 +71,8 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* 0.53 (not shadcn's 0.556) so muted text on bg-muted meets WCAG AA */
+  --muted-foreground: oklch(0.53 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -82,6 +95,9 @@
 }
 
 .dark {
+  color-scheme: dark;
+  --brand: oklch(0.707 0.165 254.624);
+  --brand-foreground: oklch(0.145 0 0);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

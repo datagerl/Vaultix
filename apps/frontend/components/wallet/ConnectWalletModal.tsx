@@ -1,9 +1,20 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ExternalLink, Check, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useWallet } from '@/app/contexts/WalletContext';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  X,
+  ExternalLink,
+  Check,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
+import { useWallet } from "@/app/contexts/WalletContext";
+import { WalletType } from "@/app/services/wallet";
 
 interface ConnectWalletModalProps {
   isOpen: boolean;
@@ -14,24 +25,32 @@ interface ConnectWalletModalProps {
 
 const WALLET_INFO = {
   freighter: {
-    name: 'Freighter',
-    description: 'Browser extension wallet',
-    icon: '🚀',
-    installUrl: 'https://www.freighter.app/',
+    name: "Freighter",
+    description: "Browser extension wallet",
+    icon: "🚀",
+    installUrl: "https://www.freighter.app/",
     alwaysAvailable: false,
   },
   albedo: {
-    name: 'Albedo',
-    description: 'Web-based wallet — no extension needed',
-    icon: '✨',
-    installUrl: 'https://albedo.link/',
+    name: "Albedo",
+    description: "Web-based wallet — no extension needed",
+    icon: "✨",
+    installUrl: "https://albedo.link/",
     alwaysAvailable: true,
   },
   lobstr: {
-    name: 'Lobstr',
-    description: 'Browser extension wallet',
-    icon: '🦞',
-    installUrl: 'https://lobstr.co/vault/',
+    name: "Lobstr",
+    description: "Browser extension wallet",
+    icon: "🦞",
+    installUrl: "https://lobstr.co/vault/",
+    alwaysAvailable: false,
+  },
+  xbull: {
+    name: "xBull",
+    description: "Browser extension wallet",
+    icon: "🐂",
+    installUrl:
+      "https://chromewebstore.google.com/detail/xbull-wallet/omajpeaffjgmlpmhbfdjepdejoemifpe",
     alwaysAvailable: false,
   },
 } as const;
@@ -43,21 +62,64 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
   const { signIn, loading: isSigningIn } = useWalletAuth();
   const isConnecting = isWalletConnecting || isSigningIn;
   const [availableWallets, setAvailableWallets] = useState<string[]>([]);
+const WALLET_TYPE_BY_KEY: Record<WalletKey, WalletType> = {
+  freighter: WalletType.FREIGHTER,
+  albedo: WalletType.ALBEDO,
+  lobstr: WalletType.LOBSTR,
+  xbull: WalletType.XBULL,
+};
+
+export const getWalletConnectionErrorMessage = (
+  error: unknown,
+  targetNetwork: string,
+): string => {
+  const value = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = value.toLowerCase();
+  const candidate = error as { code?: number; status?: string } | null;
+  if (
+    normalized.includes("reject") ||
+    candidate?.status?.toLowerCase() === "rejected" ||
+    candidate?.code === 4001
+  ) {
+    return "Connection request was cancelled. Approve the request in your wallet to connect.";
+  }
+  if (normalized.includes("locked")) {
+    return "Your wallet is locked. Open the wallet extension, unlock it, and try again.";
+  }
+  if (normalized.includes("network")) {
+    return `Wallet network could not be verified. Switch your wallet to ${targetNetwork} and reconnect.`;
+  }
+  return value || "Wallet connection failed. Please try again.";
+};
+
+export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
+  const {
+    connect,
+    getAvailableWallets,
+    isConnecting,
+    error: contextError,
+  } = useWallet();
+  const [availableWallets, setAvailableWallets] = useState<WalletType[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletKey | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
-  
+
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const targetNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK || 'testnet';
+  const targetNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK || "testnet";
 
   // Hydrate supported local platform targets when modal swings open
   useEffect(() => {
     if (!isOpen) return;
     setLocalError(null);
     setSelectedWallet(null);
-    
+
     getAvailableWallets()
       .then((wallets) => setAvailableWallets(wallets))
-      .catch((err) => console.error('[Wallet Modal] Failed to parse extensions:', err));
+      .catch((err) =>
+        console.error("[Wallet Modal] Failed to parse extensions:", err),
+      );
   }, [isOpen, getAvailableWallets]);
 
   // Cleanup timeout handles when tearing down components
@@ -67,21 +129,35 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
     };
   }, []);
 
-  const handleConnect = useCallback(async (walletType: WalletKey) => {
-    // Prevent double-submits / concurrent racing threads
-    if (isConnecting) return;
+  const handleConnect = useCallback(
+    async (walletType: WalletKey) => {
+      // Prevent double-submits / concurrent racing threads
+      if (isConnecting) return;
 
-    setSelectedWallet(walletType);
-    setLocalError(null);
+      setSelectedWallet(walletType);
+      setLocalError(null);
 
-    // 1. Enforce Timeout Race Loop (30 Seconds)
-    timeoutRef.current = setTimeout(() => {
-      if (isConnecting || selectedWallet === walletType) {
-        setLocalError('Connection handshake timed out after 30 seconds. Please try again.');
+      // 1. Enforce Timeout Race Loop (30 Seconds)
+      timeoutRef.current = setTimeout(() => {
+        if (isConnecting || selectedWallet === walletType) {
+          setLocalError(
+            "Connection handshake timed out after 30 seconds. Please try again.",
+          );
+          setSelectedWallet(null);
+          console.error(
+            `[Wallet Timeout] Connection request dropped for type: ${walletType}`,
+          );
+        }
+      }, 30000);
+
+      try {
+        await connect(WALLET_TYPE_BY_KEY[walletType]);
+
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        onClose();
+      } catch (err: any) {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setSelectedWallet(null);
-        console.error(`[Wallet Timeout] Connection request dropped for type: ${walletType}`);
-      }
-    }, 30000);
 
     try {
       const connection = await connect(walletType as any);
@@ -117,6 +193,16 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
       console.error(`[Wallet Connection Failure] Context mapping for ${walletType}:`, err);
     }
   }, [isConnecting, connect, signIn, onClose, onSignedIn, targetNetwork, selectedWallet]);
+        setLocalError(getWalletConnectionErrorMessage(err, targetNetwork));
+
+        console.error(
+          `[Wallet Connection Failure] Context mapping for ${walletType}:`,
+          err,
+        );
+      }
+    },
+    [isConnecting, connect, onClose, targetNetwork, selectedWallet],
+  );
 
   if (!isOpen) return null;
 
@@ -126,15 +212,18 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
       <div className="relative w-full max-w-md rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 p-6 shadow-2xl space-y-5">
-        
         {/* HEADER SECTION */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-extrabold text-white">Connect Wallet</h2>
-            <p className="text-gray-400 text-xs mt-0.5">Choose a ledger provider link to connect to Vaultix</p>
+            <h2 className="text-xl font-extrabold text-white">
+              Connect Wallet
+            </h2>
+            <p className="text-gray-400 text-xs mt-0.5">
+              Choose a ledger provider link to connect to Vaultix
+            </p>
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             disabled={isConnecting}
             className="p-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-30"
             aria-label="Close Modal"
@@ -164,8 +253,15 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
 
         {/* INTEGRATED CARD OPTION BUTTON LIST */}
         <div className="space-y-2.5">
-          {(Object.entries(WALLET_INFO) as [WalletKey, typeof WALLET_INFO[WalletKey]][]).map(([type, info]) => {
-            const isAvailable = info.alwaysAvailable || availableWallets.includes(type);
+          {(
+            Object.entries(WALLET_INFO) as [
+              WalletKey,
+              (typeof WALLET_INFO)[WalletKey],
+            ][]
+          ).map(([type, info]) => {
+            const isAvailable =
+              info.alwaysAvailable ||
+              availableWallets.includes(WALLET_TYPE_BY_KEY[type]);
             const isConnectingThis = selectedWallet === type && isConnecting;
 
             return (
@@ -176,15 +272,23 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
                 disabled={(!isAvailable && !info.installUrl) || isConnecting}
                 className={`w-full flex items-center justify-between p-3.5 rounded-xl transition-all border text-left ${
                   isAvailable
-                    ? 'bg-gray-800/80 border-gray-700 hover:bg-gray-700/90 hover:border-gray-600 cursor-pointer active:scale-[0.99]'
-                    : 'bg-gray-900/40 border-gray-800/60 opacity-60'
+                    ? "bg-gray-800/80 border-gray-700 hover:bg-gray-700/90 hover:border-gray-600 cursor-pointer active:scale-[0.99]"
+                    : "bg-gray-900/40 border-gray-800/60 opacity-60"
                 }`}
               >
                 <div className="flex items-center space-x-3.5 min-w-0">
-                  <span className="text-xl select-none" role="img" aria-hidden="true">{info.icon}</span>
+                  <span
+                    className="text-xl select-none"
+                    role="img"
+                    aria-hidden="true"
+                  >
+                    {info.icon}
+                  </span>
                   <div className="min-w-0">
                     <div className="flex items-center space-x-2">
-                      <span className="font-bold text-sm text-white truncate">{info.name}</span>
+                      <span className="font-bold text-sm text-white truncate">
+                        {info.name}
+                      </span>
                       {isAvailable ? (
                         <span className="text-[9px] px-1.5 py-0.5 bg-green-500/10 text-green-400 font-bold tracking-wide uppercase rounded">
                           Ready
@@ -195,7 +299,9 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 truncate mt-0.5">{info.description}</p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">
+                      {info.description}
+                    </p>
                   </div>
                 </div>
 
@@ -228,9 +334,13 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
 
         {/* FOOTER NETWORK INDEX SUMMARY */}
         <div className="mt-4 pt-4 border-t border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs gap-1.5">
-          <span className="text-gray-400 font-medium">Target Context Cluster</span>
+          <span className="text-gray-400 font-medium">
+            Target Context Cluster
+          </span>
           <div className="flex items-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${targetNetwork === 'mainnet' ? 'bg-green-500' : 'bg-amber-500'}`} />
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${targetNetwork === "mainnet" ? "bg-green-500" : "bg-amber-500"}`}
+            />
             <span className="font-mono font-bold uppercase text-gray-200">
               {targetNetwork}
             </span>

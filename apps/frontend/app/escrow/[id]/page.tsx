@@ -21,6 +21,7 @@ import DisputeSection from "@/components/escrow/detail/DisputeSection";
 import ArbitratorResolutionModal from "@/components/escrow/detail/ArbitratorResolutionModal";
 import { EscrowDetailSkeleton } from "@/components/ui/EscrowDetailSkeleton";
 import { CanonicalEscrowStatus } from '@/utils/escrowStatus';
+import { apiClient } from "@/lib/api-client";
 
 /** A party record may carry the wallet on a joined `user`, or use it as the id. */
 const partyWallet = (party: IParty): string =>
@@ -88,11 +89,8 @@ const EscrowDetailPage = () => {
       return;
     }
     try {
-      const response = await fetch(`/api/escrows/${escrow.id}/dispute`);
-      if (response.ok) {
-        const disputeData = await response.json();
-        setDispute(disputeData);
-      }
+      const disputeData = await apiClient.get(`/escrows/${escrow.id}/dispute`);
+      setDispute(disputeData);
     } catch (error) {
       console.error("Error fetching dispute details:", error);
     }

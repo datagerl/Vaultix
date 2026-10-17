@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { User, Copy, Check, Bell, Shield, Settings as SettingsIcon, ArrowRight, Loader2, DollarSign } from "lucide-react";
+import { User, Copy, Check, Bell, Shield, Settings as SettingsIcon, ArrowRight, Loader2, DollarSign, Palette } from "lucide-react";
 import { useWallet } from "@/app/contexts/WalletContext";
 import ApiKeyManager from "@/components/settings/ApiKeyManager";
 import { useNotifications, UserPreferences } from "@/hooks/useNotifications";
 import { useCurrency } from "@/context/CurrencyContext";
+import ThemeToggle from "@/components/ThemeToggle";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -111,8 +112,26 @@ function ProfileSection() {
       {mounted ? (
         <ProfileSectionInner />
       ) : (
-        <p className="text-sm text-gray-400 italic">Loading…</p>
+        <p className="text-sm text-muted-foreground italic">Loading…</p>
       )}
+    </SectionCard>
+  );
+}
+
+// ── Appearance Section ─────────────────────────────────────────────────────
+
+function AppearanceSection() {
+  return (
+    <SectionCard title="Appearance" icon={Palette}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <span className="text-sm font-medium text-foreground block">Theme</span>
+          <span className="text-xs text-muted-foreground">
+            System follows your device setting. Saved on this browser.
+          </span>
+        </div>
+        <ThemeToggle variant="segmented" />
+      </div>
     </SectionCard>
   );
 }
@@ -166,14 +185,17 @@ function Toggle({
 }) {
   return (
     <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
       onClick={onChange}
       disabled={disabled}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
         disabled ? "opacity-50 cursor-not-allowed" : ""
-      } ${checked ? "bg-blue-600" : "bg-gray-300"}`}
+      } ${checked ? "bg-brand" : "bg-muted-foreground"}`}
     >
       <span
-        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+        className={`inline-block h-3.5 w-3.5 rounded-full bg-background shadow transition-transform ${
           checked ? "translate-x-4" : "translate-x-1"
         }`}
       />
@@ -253,29 +275,29 @@ function NotificationPrefsSection() {
       <SectionCard title="Notification Preferences" icon={Bell}>
         <div className="space-y-4">
           {/* Sound toggle skeleton */}
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <div className="flex items-center justify-between border-b border-border pb-3">
             <div className="space-y-1">
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-              <div className="h-3 w-48 bg-gray-100 rounded animate-pulse" />
+              <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+              <div className="h-3 w-48 bg-muted rounded animate-pulse" />
             </div>
-            <div className="h-5 w-9 bg-gray-200 rounded-full animate-pulse" />
+            <div className="h-5 w-9 bg-muted rounded-full animate-pulse" />
           </div>
           {/* Header skeleton */}
           <div className="grid grid-cols-[1fr_auto_auto] gap-x-6">
-            <div className="h-3 w-10 bg-gray-100 rounded animate-pulse" />
-            <div className="h-3 w-10 bg-gray-100 rounded animate-pulse" />
-            <div className="h-3 w-10 bg-gray-100 rounded animate-pulse" />
+            <div className="h-3 w-10 bg-muted rounded animate-pulse" />
+            <div className="h-3 w-10 bg-muted rounded animate-pulse" />
+            <div className="h-3 w-10 bg-muted rounded animate-pulse" />
           </div>
           {/* Row skeletons */}
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-x-6 items-center">
-              <div className="h-4 w-28 bg-gray-100 rounded animate-pulse" />
-              <div className="h-5 w-9 bg-gray-100 rounded-full animate-pulse" />
-              <div className="h-5 w-9 bg-gray-100 rounded-full animate-pulse" />
+              <div className="h-4 w-28 bg-muted rounded animate-pulse" />
+              <div className="h-5 w-9 bg-muted rounded-full animate-pulse" />
+              <div className="h-5 w-9 bg-muted rounded-full animate-pulse" />
             </div>
           ))}
           <div className="pt-2">
-            <div className="h-9 w-32 bg-gray-200 rounded-lg animate-pulse" />
+            <div className="h-9 w-32 bg-muted rounded-lg animate-pulse" />
           </div>
         </div>
       </SectionCard>
@@ -442,6 +464,7 @@ export default function SettingsPage() {
         </div>
 
         <ProfileSection />
+        <AppearanceSection />
         <TemplatesLinkSection />
         <CurrencyPreferencesSection />
         <NotificationPrefsSection />

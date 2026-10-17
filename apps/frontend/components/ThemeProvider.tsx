@@ -1,89 +1,80 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  DARK_MEDIA_QUERY,
+  DEFAULT_THEME,
+  THEME_STORAGE_KEY,
+  applyTheme,
+  getSystemTheme,
+  isTheme,
+  readStoredTheme,
+  resolveTheme,
+  writeStoredTheme,
+  type ResolvedTheme,
+  type Theme,
+} from '@/lib/theme';
 
-type Theme = 'light' | 'dark' | 'system';
+export type { Theme, ResolvedTheme } from '@/lib/theme';
 
 interface ThemeContextType {
+  /** The user's preference: light, dark or follow the OS. */
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  resolvedTheme: 'light' | 'dark';
+  /** The theme actually applied to the document. */
+  resolvedTheme: ResolvedTheme;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-function getSystemTheme(): 'light' | 'dark' {
-  if (typeof window !== 'undefined') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  return 'light';
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('vaultix-theme') as Theme) || 'system';
-    }
-    return 'system';
-  });
-
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('vaultix-theme') as Theme;
-      if (savedTheme === 'light' || savedTheme === 'dark') {
-        return savedTheme;
-      }
-      return getSystemTheme();
-    }
-    return 'light';
-  });
-
-  const updateTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem('vaultix-theme', newTheme);
-    applyTheme(newTheme);
-  };
-
-  const applyTheme = (themeToApply: Theme) => {
-    let finalTheme: 'light' | 'dark';
-    if (themeToApply === 'system') {
-      finalTheme = getSystemTheme();
-    } else {
-      finalTheme = themeToApply;
-    }
-    setResolvedTheme(finalTheme);
-    if (finalTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
+  // Start from the same values the server renders with to avoid hydration
+  // mismatches. The real document theme is already applied by the inline
+  // script in the root layout, so there is no flash while this syncs.
+  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>('light');
+  // Until the stored preference is read, the defaults above are placeholders
+  // and must not be written to the DOM (that would undo the inline script).
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('vaultix-theme') as Theme;
-    if (savedTheme) {
-      setThemeState(savedTheme);
-      applyTheme(savedTheme);
-    } else {
-      applyTheme('system');
-    }
+    setThemeState(readStoredTheme());
+    setSystemTheme(getSystemTheme());
+    setHydrated(true);
 
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      const currentTheme = localStorage.getItem('vaultix-theme') as Theme;
-      if (currentTheme === 'system') {
-        applyTheme('system');
-      }
+    const mediaQuery = window.matchMedia?.(DARK_MEDIA_QUERY);
+    const handleSystemChange = (event: MediaQueryListEvent) => {
+      setSystemTheme(event.matches ? 'dark' : 'light');
     };
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    mediaQuery?.addEventListener('change', handleSystemChange);
+
+    // Keep tabs in sync when the preference changes elsewhere.
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== THEME_STORAGE_KEY) return;
+      setThemeState(isTheme(event.newValue) ? event.newValue : DEFAULT_THEME);
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      mediaQuery?.removeEventListener('change', handleSystemChange);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme: updateTheme, resolvedTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  const resolvedTheme = resolveTheme(theme, systemTheme);
+
+  useEffect(() => {
+    if (hydrated) applyTheme(resolvedTheme);
+  }, [hydrated, resolvedTheme]);
+
+  const setTheme = useCallback((next: Theme) => {
+    setThemeState(next);
+    writeStoredTheme(next);
+  }, []);
+
+  const value = useMemo(() => ({ theme, setTheme, resolvedTheme }), [theme, setTheme, resolvedTheme]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

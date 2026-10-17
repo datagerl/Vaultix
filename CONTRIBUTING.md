@@ -69,6 +69,29 @@ npm install                        # install root tooling
 npm --prefix apps/backend install  # install an app's dependencies
 ```
 
+## Make Targets
+
+Install GNU Make, Node.js 20+ with npm 10+, and the dependencies for each app
+you intend to work on. Rust is needed for contract tests; Docker with the
+Compose plugin is needed for the local PostgreSQL targets. From the repository
+root, use `make help` to list commands:
+
+```bash
+make dev            # run backend and frontend dev servers concurrently
+make test           # backend, frontend, and mobile tests
+make lint           # root and app linters
+make build          # backend and frontend builds
+make db-up          # start PostgreSQL in Docker
+make db-reset       # delete the PostgreSQL data volume and recreate it
+make contract-test  # run Soroban contract tests with Cargo
+```
+
+These targets delegate to the npm scripts, Cargo, and Docker Compose commands
+already used by the project. `db-reset` is destructive: it removes all local
+data stored in the Compose volume. Make targets work on Linux and macOS; on
+Windows, use WSL with Make, Bash, and the relevant tools installed. Running the
+backend and frontend together requires both apps' dependencies to be installed.
+
 ## Development Workflow
 
 ### Branch Naming Convention
@@ -238,6 +261,7 @@ After: [screenshot]
 - Use Prettier for formatting (`.prettierrc`)
 - Prefer async/await for asynchronous code
 - Use meaningful variable names
+- **Frontend colours:** use the semantic theme tokens (`bg-background`, `text-muted-foreground`, `bg-brand`, …), not raw palette classes like `bg-white` or `text-gray-700`, so the UI works in both light and dark themes. See [Theming](apps/frontend/README.md#theming-light--dark--system).
 
 **Example:**
 

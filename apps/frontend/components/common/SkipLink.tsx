@@ -36,11 +36,12 @@ export default function SkipLink({
         "sr-only",
         // On focus: undo the hiding and pin the link to the top-left, above other content
         "focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50",
-        // On focus: give it a visible, button-like appearance (border, background, rounded corners)
-        "focus:rounded focus:border focus:border-blue-600 focus:bg-white",
+        // On focus: give it a visible, button-like appearance (border, background, rounded corners).
+        // Theme tokens keep it legible in both light and dark mode.
+        "focus:rounded focus:border focus:border-brand focus:bg-background",
         // On focus: padding, text color and shadow; the default outline is removed
-        // because the blue border already acts as the focus indicator
-        "focus:px-4 focus:py-2 focus:text-blue-700 focus:shadow-lg focus:outline-none",
+        // because the brand-coloured border already acts as the focus indicator
+        "focus:px-4 focus:py-2 focus:text-brand focus:shadow-lg focus:outline-none",
       ].join(" ")}
       // Explicit accessible name for assistive technologies
       aria-label={label}

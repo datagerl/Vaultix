@@ -4,6 +4,7 @@ import Providers from "@/components/Providers";
 import Navbar from "@/components/layout/Navbar";
 import MobileNav from "@/components/layout/MobileNav";
 import { headers } from "next/headers";
+import { themeInitScript } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: "Vaultix - Secure Escrow Platform",
@@ -27,31 +28,8 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var theme = localStorage.getItem('vaultix-theme');
-                  var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  var finalTheme = 'light';
-                  if (theme === 'dark') {
-                    finalTheme = 'dark';
-                  } else if (theme === 'light') {
-                    finalTheme = 'light';
-                  } else {
-                    finalTheme = systemDark ? 'dark' : 'light';
-                  }
-                  if (finalTheme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                  }
-                } catch (e) {}
-              })()
-            `,
-          }}
-        />
+        {/* Applies the saved theme before first paint to avoid a flash of the wrong theme. */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="antialiased overflow-x-hidden">
         <Providers>
