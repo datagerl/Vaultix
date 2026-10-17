@@ -1,4 +1,5 @@
 import albedo from '@albedo-link/intent';
+import { toHexSignature } from '@/lib/signature';
 
 export interface AlbedoIntentResult {
   signed_envelope_xdr?: string;
@@ -44,6 +45,18 @@ export class AlbedoService {
         throw new Error('Transaction signing was rejected by the user.');
       }
       throw new Error(`Failed to sign transaction with Albedo: ${error.message}`);
+    }
+  }
+
+  async signMessage(message: string, publicKey: string): Promise<string> {
+    try {
+      const result = await albedo.signMessage({ message, pubkey: publicKey });
+      return toHexSignature(result.message_signature);
+    } catch (error: any) {
+      if (error.message?.includes('rejected')) {
+        throw new Error('Message signing was rejected by the user.');
+      }
+      throw new Error(`Failed to sign message with Albedo: ${error.message}`);
     }
   }
 

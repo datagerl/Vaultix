@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X, Sun, Moon, Monitor, ChevronDown } from "lucide-react";
 import NotificationBell from "@/components/common/NotificationBell";
 import ConnectionStatusIndicator from "@/components/common/ConnectionStatusIndicator";
+import { WalletButton } from "@/components/wallet/WalletButton";
 import { useTheme } from "@/components/ThemeProvider";
 
 const NAV_LINKS = [
@@ -132,6 +133,7 @@ export default function Navbar(): JSX.Element {
               </div>
               <ConnectionStatusIndicator />
               <NotificationBell />
+              <WalletButton />
             </div>
 
             {/* Mobile controls */}
@@ -214,6 +216,9 @@ export default function Navbar(): JSX.Element {
                 </Link>
               ))}
             </nav>
+            <div className="mt-6">
+              <WalletButton />
+            </div>
           </div>
         </div>
       )}

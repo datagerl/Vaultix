@@ -1,16 +1,39 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Wallet, LogOut, Copy, Check, AlertCircle } from 'lucide-react';
 import { useWalletConnection } from '@/app/hooks/useWallet';
 import { ConnectWalletModal } from './ConnectWalletModal';
 import { truncateAddress } from '@/lib/utils';
+import { useSession } from '@/hooks/useSession';
+import { clearSession } from '@/lib/session';
+import { safeReturnTo } from '@/lib/return-to';
 
 export const WalletButton: React.FC = () => {
-  const { isConnected, wallet, disconnect, network } = useWalletConnection();
+  const { isConnected: isWalletConnected, wallet, disconnect, network } = useWalletConnection();
+  const session = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showDisconnect, setShowDisconnect] = useState(false);
+
+  // A restored wallet connection is not proof of identity: the user is only
+  // "connected" here once a session exists for that same wallet.
+  const isConnected = isWalletConnected && !!wallet && session?.walletAddress === wallet.publicKey;
+
+  const handleSignedIn = () => {
+    const returnTo = new URLSearchParams(window.location.search).get('returnTo');
+    if (returnTo || pathname === '/') {
+      // Full navigation, not router.push: routes prefetched while signed out
+      // cached the middleware's redirect to "/", which a client-side
+      // transition would replay.
+      window.location.assign(safeReturnTo(returnTo));
+    } else {
+      router.refresh();
+    }
+  };
 
   const handleCopyAddress = () => {
     if (wallet?.publicKey) {
@@ -22,6 +45,7 @@ export const WalletButton: React.FC = () => {
 
   const handleDisconnect = () => {
     disconnect();
+    clearSession();
     setShowDisconnect(false);
   };
 
@@ -30,15 +54,16 @@ export const WalletButton: React.FC = () => {
       <>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+          className="min-h-[44px] flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
         >
-          <Wallet className="w-4 h-4" />
-          <span className="font-medium">Connect Wallet</span>
+          <Wallet className="w-4 h-4" aria-hidden="true" />
+          <span className="font-medium">{isWalletConnected ? 'Sign In' : 'Connect Wallet'}</span>
         </button>
 
         <ConnectWalletModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
+          onSignedIn={handleSignedIn}
         />
       </>
     );
@@ -67,6 +92,8 @@ export const WalletButton: React.FC = () => {
         <button
           onClick={() => setShowDisconnect(!showDisconnect)}
           className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+          aria-label="Wallet menu"
+          aria-expanded={showDisconnect}
         >
           <Wallet className="w-4 h-4 text-gray-300" />
         </button>

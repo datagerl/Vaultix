@@ -354,8 +354,11 @@ cd apps/backend && npm test
 # Frontend tests
 cd apps/frontend && npm test
 
-# E2E tests
-cd apps/frontend && npm run test:e2e
+# E2E tests (Playwright; fully mocked, no backend needed). Build first.
+cd apps/frontend && npm run build && npm run test:e2e
+
+# Frontend unit tests with a coverage report (coverage/lcov-report/index.html)
+cd apps/frontend && npm run test:coverage
 
 # Contract tests
 cd apps/onchain && cargo test

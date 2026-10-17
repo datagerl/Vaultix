@@ -9,6 +9,15 @@ const createJestConfig = nextJest({
 /** @type {import('jest').Config} */
 const customConfig = {
   coverageProvider: 'v8',
+  // `npm run test:coverage` writes coverage/ (HTML report in coverage/lcov-report,
+  // totals in coverage/coverage-summary.json); CI publishes it as an artifact.
+  collectCoverageFrom: [
+    '{app,components,context,hooks,lib,services,utils}/**/*.{ts,tsx}',
+    '!**/*.{test,spec}.{ts,tsx}',
+    '!**/__tests__/**',
+    '!**/*.d.ts',
+  ],
+  coverageReporters: ['text-summary', 'lcov', 'json-summary'],
   testEnvironment: 'jsdom',
   testEnvironmentOptions: {
     customExportConditions: ['node', 'node-addons'],

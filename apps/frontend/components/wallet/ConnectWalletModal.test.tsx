@@ -8,6 +8,11 @@ jest.mock('@/app/contexts/WalletContext', () => ({
   useWallet: jest.fn(),
 }));
 
+// Sign-in is covered in __tests__/ConnectWalletModal.spec.tsx and useWalletAuth.test.ts.
+jest.mock('@/hooks/useWalletAuth', () => ({
+  useWalletAuth: () => ({ signIn: jest.fn().mockResolvedValue(true), loading: false, error: null, token: null }),
+}));
+
 describe('ConnectWalletModal', () => {
   const mockOnClose = jest.fn();
   const mockConnect = jest.fn();

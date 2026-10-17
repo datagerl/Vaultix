@@ -97,6 +97,22 @@ describe('EscrowService status normalization at the API boundary', () => {
       expect(escrow.status).toBe(CanonicalEscrowStatus.EXPIRED);
     });
 
+    it('fundEscrow sends only the amount the API whitelists', async () => {
+      post.mockResolvedValue(rawEscrow('active'));
+
+      await EscrowService.fundEscrow('id', { amount: '100', asset: 'XLM' });
+
+      expect(post).toHaveBeenCalledWith('/escrows/id/fund', { amount: '100' });
+    });
+
+    it('releaseFunds posts to the release endpoint without a body', async () => {
+      post.mockResolvedValue(rawEscrow('completed'));
+
+      await EscrowService.releaseFunds('id');
+
+      expect(post).toHaveBeenCalledWith('/escrows/id/release');
+    });
+
     it('normalizes a status-missing response to UNKNOWN', async () => {
       get.mockResolvedValue(rawEscrow(undefined));
 

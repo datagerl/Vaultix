@@ -16,6 +16,7 @@ import { IEscrowExtended } from "@/types/escrow";
 import TransactionTracker from "@/components/stellar/TransactionTracker";
 import { toast } from "sonner";
 import { CanonicalEscrowStatus } from '@/utils/escrowStatus';
+import { EscrowService } from "@/services/escrow";
 
 type ReleaseMode = "manual" | "auto";
 
@@ -170,27 +171,16 @@ export const ReleaseFundsModal: React.FC<ReleaseFundsModalProps> = ({
         setSigningPhase("waiting");
         await Promise.resolve();
         setSigningPhase("submitting");
-        const response = await fetch(`/api/escrows/${escrow.id}/release`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          signal: abortController.signal,
-        });
-
-        if (!response.ok) {
-          const data = await response
-            .json()
-            .catch(() => ({ message: "Failed to release funds" }));
-          throw new Error(
-            data.message || "Failed to release funds. Please try again.",
-          );
-        }
-
-        const data = (await response.json()) as {
-          transactionHash?: string;
-          status?: string;
-        };
+        // The API performs the on-chain release and answers with
+        // `{ id, status, transactionHash }`.
+        const data = (await Promise.race([
+          EscrowService.releaseEscrow(escrow.id),
+          new Promise<never>((_, reject) =>
+            abortController.signal.addEventListener("abort", () =>
+              reject(new Error("TRANSACTION_TIMEOUT")),
+            ),
+          ),
+        ])) as { transactionHash?: string; status?: string };
 
         if (data.transactionHash) {
           setTxHash(data.transactionHash);
@@ -237,7 +227,8 @@ export const ReleaseFundsModal: React.FC<ReleaseFundsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
+      {/* Scrollable so the actions stay reachable on short viewports. */}
+      <div className="relative w-full max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>

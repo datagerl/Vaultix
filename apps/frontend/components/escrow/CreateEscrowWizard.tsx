@@ -325,8 +325,13 @@ export default function CreateEscrowWizard() {
                 Back
               </button>
 
+              {/* Distinct keys force a new element: if React reused the "Next"
+                  button and flipped its type to "submit" while the click was
+                  still being dispatched, that click would submit the form and
+                  skip the Review step. */}
               {currentStep === STEPS.length - 1 ? (
                 <button
+                  key="submit"
                   type="submit"
                   disabled={isSubmitting}
                   className="min-h-[44px] flex items-center gap-1.5 px-5 py-2 border border-transparent rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-colors disabled:opacity-50"
@@ -339,6 +344,7 @@ export default function CreateEscrowWizard() {
                 </button>
               ) : (
                 <button
+                  key="next"
                   type="button"
                   onClick={nextStep}
                   className="min-h-[44px] flex items-center gap-1.5 px-5 py-2 border border-transparent rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-colors"

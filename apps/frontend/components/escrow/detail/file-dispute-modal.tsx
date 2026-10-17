@@ -130,9 +130,9 @@ export default function FileDisputeModal({
       setEvidenceUrls([]);
       setUploadedFiles([]);
       setShowConfirmation(false);
-    } catch (error: any) {
-      console.error("Dispute filing error:", error);
-      error(error.message || "Failed to file dispute. Please try again.");
+    } catch (err: any) {
+      console.error("Dispute filing error:", err);
+      error(err?.message || "Failed to file dispute. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -141,7 +141,8 @@ export default function FileDisputeModal({
   return (
     <>
       <Dialog open={open && !showConfirmation} onOpenChange={onClose}>
-        <DialogContent className="max-w-lg">
+        {/* Scrollable so the actions stay reachable on short viewports. */}
+        <DialogContent className="max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Raise a Dispute</DialogTitle>
           </DialogHeader>

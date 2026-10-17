@@ -345,9 +345,10 @@ cargo build --target wasm32v1-none --release
    (Jest for JS/TS, Prisma mocks for DB.)
 3. E2E:
    ```
+   npm --prefix apps/frontend run build
    npm --prefix apps/frontend run test:e2e
    ```
-   (Playwright; requires testnet.)
+   (Playwright. The API, wallet and Stellar network are all mocked, so no backend or testnet is needed. See [apps/frontend/README.md](apps/frontend/README.md#testing).)
 
 ### Deployment
 - **Frontend/Backend**: Vercel (frontend), Render/AWS (backend)—link GitHub, add env vars.

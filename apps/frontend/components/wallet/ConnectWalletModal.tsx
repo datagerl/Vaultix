@@ -3,10 +3,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ExternalLink, Check, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useWallet } from '@/app/contexts/WalletContext';
+import { useWalletAuth } from '@/hooks/useWalletAuth';
 
 interface ConnectWalletModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Called after the wallet is connected and the sign-in challenge succeeds. */
+  onSignedIn?: () => void;
 }
 
 const WALLET_INFO = {
@@ -35,8 +38,10 @@ const WALLET_INFO = {
 
 type WalletKey = keyof typeof WALLET_INFO;
 
-export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, onClose }) => {
-  const { connect, getAvailableWallets, isConnecting, error: contextError } = useWallet();
+export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, onClose, onSignedIn }) => {
+  const { connect, getAvailableWallets, isConnecting: isWalletConnecting, error: contextError } = useWallet();
+  const { signIn, loading: isSigningIn } = useWalletAuth();
+  const isConnecting = isWalletConnecting || isSigningIn;
   const [availableWallets, setAvailableWallets] = useState<string[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletKey | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -79,10 +84,20 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
     }, 30000);
 
     try {
-      await connect(walletType as any);
-      
+      const connection = await connect(walletType as any);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+      // Connecting only proves which account the wallet exposes; signing the
+      // backend challenge is what creates the authenticated session.
+      const signedIn = await signIn(connection);
+      if (!signedIn) {
+        setSelectedWallet(null);
+        setLocalError('Sign-in failed. Approve the sign-in request in your wallet and try again.');
+        return;
+      }
+
       onClose();
+      onSignedIn?.();
     } catch (err: any) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setSelectedWallet(null);
@@ -101,7 +116,7 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
 
       console.error(`[Wallet Connection Failure] Context mapping for ${walletType}:`, err);
     }
-  }, [isConnecting, connect, onClose, targetNetwork, selectedWallet]);
+  }, [isConnecting, connect, signIn, onClose, onSignedIn, targetNetwork, selectedWallet]);
 
   if (!isOpen) return null;
 

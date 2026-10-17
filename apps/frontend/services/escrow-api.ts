@@ -79,8 +79,10 @@ export class EscrowService {
   }
 
   static async fundEscrow(id: string, data: { amount: string; asset: string }): Promise<IEscrow> {
+    // FundEscrowDto accepts only `amount`, and the API rejects unknown fields
+    // (forbidNonWhitelisted); the asset is fixed by the escrow itself.
     return withNormalizedStatus(
-      await apiClient.post<RawEscrow>(`/escrows/${id}/fund`, data)
+      await apiClient.post<RawEscrow>(`/escrows/${id}/fund`, { amount: data.amount })
     );
   }
 

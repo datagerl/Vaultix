@@ -4,7 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useEscrow } from "@/hooks/useEscrow";
-import { useWallet } from "@/hooks/useWallet";
+import { useSession } from "@/hooks/useSession";
+import { useToast } from "@/hooks/useToast";
+import { EscrowService } from "@/services/escrow";
+import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
+import ReleaseFundsModal from "@/components/escrow/modals/ReleaseFundsModal";
 import EscrowHeader from "@/components/escrow/detail/EscrowHeader";
 import PartiesSection from "@/components/escrow/detail/PartiesSection";
 import TermsSection from "@/components/escrow/detail/TermsSection";
@@ -18,26 +22,55 @@ import ArbitratorResolutionModal from "@/components/escrow/detail/ArbitratorReso
 import { EscrowDetailSkeleton } from "@/components/ui/EscrowDetailSkeleton";
 import { CanonicalEscrowStatus } from '@/utils/escrowStatus';
 
+/** A party record may carry the wallet on a joined `user`, or use it as the id. */
+const partyWallet = (party: IParty): string =>
+  (party as IParty & { user?: { walletAddress?: string } }).user?.walletAddress ?? party.userId;
+
 const EscrowDetailPage = () => {
   const { id } = useParams();
   const { escrow, error, loading, refetch, isLive } = useEscrow(id as string);
-  const { connected, publicKey, connect } = useWallet();
-  
+  // Actions are authorised by the signed-in wallet, not merely a connected one.
+  const session = useSession();
+  const publicKey = session?.walletAddress ?? null;
+  const connected = !!publicKey;
+  const { success: toastSuccess, error: toastError } = useToast();
+
   const [userRole, setUserRole] = useState<"creator" | "counterparty" | "arbitrator" | null>(null);
   const [currentParty, setCurrentParty] = useState<IParty | null>(null);
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [resolutionOpen, setResolutionOpen] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [releaseOpen, setReleaseOpen] = useState(false);
+  const [isFunding, setIsFunding] = useState(false);
   const [dispute, setDispute] = useState<any>(null);
+
+  const handleFund = useCallback(async () => {
+    if (!escrow) return;
+    setIsFunding(true);
+    try {
+      await EscrowService.fundEscrow(escrow.id, {
+        amount: String(escrow.amount),
+        asset: escrow.asset,
+      });
+      toastSuccess("Escrow funded. The funds are now locked in escrow.");
+      await refetch();
+    } catch (err) {
+      toastError(err instanceof Error && err.message ? err.message : "Failed to fund escrow. Please try again.");
+    } finally {
+      setIsFunding(false);
+    }
+  }, [escrow, refetch, toastError, toastSuccess]);
 
   useEffect(() => {
     if (escrow && publicKey) {
-      if (escrow.creatorId === publicKey) {
+      const creatorWallet = escrow.creator?.walletAddress ?? escrow.creatorAddress;
+      if (creatorWallet === publicKey || escrow.creatorId === publicKey) {
         setUserRole("creator");
         setCurrentParty(null);
-      } else if (escrow.parties?.some((p) => p.userId === publicKey)) {
+      } else if (escrow.parties?.some((p) => partyWallet(p) === publicKey)) {
         setUserRole("counterparty");
         setCurrentParty(
-          escrow.parties.find((p) => p.userId === publicKey) ?? null,
+          escrow.parties.find((p) => partyWallet(p) === publicKey) ?? null,
         );
       } else {
         setUserRole(null);
@@ -126,13 +159,19 @@ const EscrowDetailPage = () => {
           escrow={escrow}
           userRole={userRole}
           connected={connected}
-          connect={connect}
+          connect={() => setConnectOpen(true)}
           publicKey={publicKey}
           onFileDispute={() => setDisputeOpen(true)}
         />
 
         <div className="lg:hidden mt-4">
-          <TermsSection escrow={escrow} userRole={userRole} />
+          <TermsSection
+            escrow={escrow}
+            userRole={userRole}
+            onFund={handleFund}
+            isFunding={isFunding}
+            onRelease={() => setReleaseOpen(true)}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-4 sm:mt-8">
@@ -174,7 +213,13 @@ const EscrowDetailPage = () => {
           </div>
 
           <div className="hidden lg:block lg:col-span-1">
-            <TermsSection escrow={escrow} userRole={userRole} />
+            <TermsSection
+              escrow={escrow}
+              userRole={userRole}
+              onFund={handleFund}
+              isFunding={isFunding}
+              onRelease={() => setReleaseOpen(true)}
+            />
           </div>
         </div>
       </div>
@@ -189,6 +234,22 @@ const EscrowDetailPage = () => {
           refetch();
           void fetchDisputeData();
         }}
+      />
+      <ConnectWalletModal
+        isOpen={connectOpen}
+        onClose={() => setConnectOpen(false)}
+        onSignedIn={() => void refetch()}
+      />
+      <ReleaseFundsModal
+        isOpen={releaseOpen}
+        onClose={() => {
+          setReleaseOpen(false);
+          void refetch();
+        }}
+        escrow={escrow}
+        connected={connected}
+        connect={() => setConnectOpen(true)}
+        publicKey={publicKey}
       />
       <ArbitratorResolutionModal
         open={resolutionOpen}

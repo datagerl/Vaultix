@@ -1,3 +1,5 @@
+import { toHexSignature } from '@/lib/signature';
+
 declare global {
   interface Window {
     lobstr?: any;
@@ -46,6 +48,20 @@ export class LobstrService {
       return signedXdr;
     } catch (error: any) {
       throw new Error(`Failed to sign transaction with Lobstr: ${error.message}`);
+    }
+  }
+
+  async signMessage(message: string): Promise<string> {
+    if (typeof window === 'undefined' || !window.lobstr) {
+      throw new Error('Lobstr wallet is not installed');
+    }
+    if (typeof window.lobstr.signMessage !== 'function') {
+      throw new Error('This version of Lobstr does not support signing in. Please use Freighter or Albedo.');
+    }
+    try {
+      return toHexSignature(await window.lobstr.signMessage(message));
+    } catch (error: any) {
+      throw new Error(`Failed to sign message with Lobstr: ${error.message}`);
     }
   }
 }

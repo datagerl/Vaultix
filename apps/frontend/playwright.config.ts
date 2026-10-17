@@ -21,12 +21,17 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [['list'], ['html', { open: 'never' }]],
+  reporter: process.env.CI
+    ? [['github'], ['list'], ['html', { open: 'never' }]]
+    : [['list'], ['html', { open: 'never' }]],
   outputDir: 'test-results',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/test-use */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://127.0.0.1:3000',
+    /* Base URL to use in actions like `await page.goto('/')`.
+     * `localhost` (not 127.0.0.1): the auth middleware's redirects resolve to
+     * localhost, and cookies/localStorage are per-origin, so a run must stay on
+     * one origin. It also matches the API client's default base URL. */
+    baseURL: 'http://localhost:3000',
 
     /* Collect trace when retrying a failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',

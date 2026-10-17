@@ -13,8 +13,8 @@ on:
       - '.github/workflows/frontend-ci.yml'
 
 jobs:
-  build:
-    name: Build and Test
+  unit:
+    name: Lint, type-check and unit tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -37,8 +37,54 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Unit tests
-        run: npm test -- --ci --coverage=false
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Unit and component tests (with coverage)
+        run: npm run test:coverage -- --ci
+
+      - name: Publish coverage summary
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e '
+              const t = require("./coverage/coverage-summary.json").total;
+              const row = (k) => `| ${k} | ${t[k].pct}% | ${t[k].covered}/${t[k].total} |`;
+              console.log(["### Frontend unit test coverage", "", "| Metric | % | Covered |", "|---|---|---|",
+                ...["lines", "statements", "functions", "branches"].map(row)].join("\n"));
+            ' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: apps/frontend/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  e2e:
+    name: E2E (Playwright, headless, mocked API)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -46,38 +92,18 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Start production server
-        run: |
-          node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 > "$RUNNER_TEMP/vaultix-frontend-server.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/vaultix-frontend-server.pid"
-          for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          cat "$RUNNER_TEMP/vaultix-frontend-server.log"
-          exit 1
-
-      - name: Playwright regressions
-        env:
-          VAULTIX_E2E_EXTERNAL_SERVER: 'true'
+      # Playwright starts `next start` itself (see webServer in playwright.config.ts).
+      # Every API, wallet, Horizon and WebSocket call is mocked, so no backend is needed.
+      - name: Playwright E2E
         run: npm run test:e2e:ci
 
-      - name: Stop production server
-        if: always()
-        run: |
-          if [ -f "$RUNNER_TEMP/vaultix-frontend-server.pid" ]; then
-            kill "$(cat "$RUNNER_TEMP/vaultix-frontend-server.pid")" 2>/dev/null || true
-          fi
-
-      - name: Upload Playwright failure artifacts
+      - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-playwright-results
+          name: frontend-playwright-report
           path: |
-            apps/frontend/test-results/
             apps/frontend/playwright-report/
+            apps/frontend/test-results/
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 14

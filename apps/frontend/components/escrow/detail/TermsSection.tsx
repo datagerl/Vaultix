@@ -7,6 +7,11 @@ import { CanonicalEscrowStatus, canTakeFinancialAction, escrowStatusLabel } from
 interface TermsSectionProps {
   escrow: IEscrowExtended;
   userRole: 'creator' | 'counterparty' | 'arbitrator' | null;
+  /** Funds a pending escrow (buyer only). */
+  onFund?: () => void;
+  isFunding?: boolean;
+  /** Opens the release flow for an active escrow (buyer only). */
+  onRelease?: () => void;
 }
 
 const formatFiat = (amount: number, currency: string) => {
@@ -16,7 +21,7 @@ const formatFiat = (amount: number, currency: string) => {
   }).format(amount);
 };
 
-const TermsSection: React.FC<TermsSectionProps> = ({ escrow, userRole }) => {
+const TermsSection: React.FC<TermsSectionProps> = ({ escrow, userRole, onFund, isFunding = false, onRelease }) => {
   const [timeLeft, setTimeLeft] = useState('');
   const { showFiat, currency } = useCurrency();
   const { prices } = useFiatPrice();
@@ -86,8 +91,26 @@ const TermsSection: React.FC<TermsSectionProps> = ({ escrow, userRole }) => {
           {userRole === 'creator' &&
             escrow.status === CanonicalEscrowStatus.CREATED &&
             canTakeFinancialAction(escrow.status) && (
-            <button className="w-full min-h-[44px] px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors cursor-pointer">
-              Fund Escrow
+            <button
+              type="button"
+              onClick={onFund}
+              disabled={!onFund || isFunding}
+              aria-busy={isFunding}
+              className="w-full min-h-[44px] px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isFunding ? 'Funding…' : 'Fund Escrow'}
+            </button>
+          )}
+          {userRole === 'creator' &&
+            (escrow.status === CanonicalEscrowStatus.ACTIVE || escrow.status === CanonicalEscrowStatus.FUNDED) &&
+            canTakeFinancialAction(escrow.status) &&
+            onRelease && (
+            <button
+              type="button"
+              onClick={onRelease}
+              className="w-full min-h-[44px] px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors cursor-pointer"
+            >
+              Release Funds
             </button>
           )}
           {userRole === 'counterparty' &&

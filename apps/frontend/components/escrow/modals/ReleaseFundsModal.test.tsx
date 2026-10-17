@@ -12,6 +12,13 @@ jest.mock("@/components/stellar/TransactionTracker", () => {
   return () => <div data-testid="transaction-tracker">Transaction Tracker Mock</div>;
 });
 
+jest.mock("@/services/escrow", () => ({
+  EscrowService: { releaseEscrow: jest.fn() },
+}));
+
+import { EscrowService } from "@/services/escrow";
+const releaseEscrow = EscrowService.releaseEscrow as jest.Mock;
+
 const mockEscrow: IEscrowExtended = {
   id: "escrow_123",
   amount: "1000",
@@ -32,7 +39,6 @@ describe("ReleaseFundsModal", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    global.fetch = jest.fn();
   });
 
   it("renders the review step initially when not released", () => {
@@ -103,10 +109,7 @@ describe("ReleaseFundsModal", () => {
   });
 
   it("submits the release request and shows success step", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({ transactionHash: "tx_hash_123", status: "success" }),
-    });
+    releaseEscrow.mockResolvedValue({ transactionHash: "tx_hash_123", status: "COMPLETED" });
 
     render(
       <ReleaseFundsModal
@@ -127,13 +130,11 @@ describe("ReleaseFundsModal", () => {
     });
     expect(screen.getByText("tx_hash_123")).toBeInTheDocument();
     expect(screen.getByTestId("transaction-tracker")).toBeInTheDocument();
+    expect(releaseEscrow).toHaveBeenCalledWith("escrow_123");
   });
 
   it("handles API error during release", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: false,
-      json: async () => ({ message: "Incompatible threshold" }),
-    });
+    releaseEscrow.mockRejectedValue(new Error("Incompatible threshold"));
 
     render(
       <ReleaseFundsModal

@@ -61,7 +61,10 @@ const EscrowHeader: React.FC<EscrowHeaderProps> = ({ escrow, userRole, connected
         <h1 className="text-xl sm:text-2xl font-bold text-foreground flex-1 min-w-0 leading-tight">
           {escrow.title}
         </h1>
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusStyle}`}>
+        <span
+          data-testid="escrow-status"
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusStyle}`}
+        >
           {statusIcon}
           <span>{escrowStatusLabel(escrow.status)}</span>
         </span>

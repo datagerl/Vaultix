@@ -8,8 +8,10 @@ import {
   getAddress as freighterGetAddress, 
   signTransaction as freighterSignTransaction,
   requestAccess as freighterRequestAccess,
-  getNetwork as freighterGetNetwork
+  getNetwork as freighterGetNetwork,
+  signMessage as freighterSignMessage,
 } from '@stellar/freighter-api';
+import { toHexSignature } from '@/lib/signature';
 
 export interface FreighterWallet {
   isConnected: () => Promise<boolean>;
@@ -133,5 +135,19 @@ export class FreighterService {
     } catch (error: any) {
       throw new Error(`Failed to sign transaction: ${error.message || error}`);
     }
+  }
+
+  /**
+   * Signs a sign-in challenge message with Freighter.
+   * @param {string} message - The challenge text from the backend.
+   * @param {string} publicKey - The account expected to sign.
+   * @returns {Promise<string>} Hex-encoded signature.
+   */
+  async signMessage(message: string, publicKey: string): Promise<string> {
+    const response = await freighterSignMessage(message, { address: publicKey });
+    if (response.error) {
+      throw new Error(`Failed to sign message: ${response.error.message ?? response.error}`);
+    }
+    return toHexSignature(response.signedMessage as string | Uint8Array | null);
   }
 }

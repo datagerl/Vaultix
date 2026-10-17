@@ -14,7 +14,7 @@ interface WalletContextType {
   connectedAccounts: WalletConnection[];
   isConnecting: boolean;
   error: string | null;
-  connect: (walletType: WalletType) => Promise<void>;
+  connect: (walletType: WalletType) => Promise<WalletConnection>;
   switchAccount: (publicKey: string) => void;
   disconnect: (publicKey?: string) => void;
   signTransaction: (xdr: string) => Promise<string>;
@@ -110,6 +110,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (previousActiveKey !== publicKey) {
         window.dispatchEvent(new CustomEvent('wallet:switched', { detail: newConnection }));
       }
+      return newConnection;
     } catch (err: any) {
       setError(err.message || 'Failed to connect wallet');
       throw err;
