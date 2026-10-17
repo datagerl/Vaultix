@@ -3,15 +3,16 @@
  * @description Centralized Freighter wallet service leveraging the official `@stellar/freighter-api` package.
  */
 
-import { 
-  isConnected as freighterIsConnected, 
-  getAddress as freighterGetAddress, 
+import {
+  isConnected as freighterIsConnected,
+  getAddress as freighterGetAddress,
   signTransaction as freighterSignTransaction,
   requestAccess as freighterRequestAccess,
   getNetwork as freighterGetNetwork,
   signMessage as freighterSignMessage,
 } from '@stellar/freighter-api';
 import { toHexSignature } from '@/lib/signature';
+} from "@stellar/freighter-api";
 
 export interface FreighterWallet {
   isConnected: () => Promise<boolean>;
@@ -42,10 +43,14 @@ export class FreighterService {
    */
   async isInstalled(): Promise<boolean> {
     try {
-      if (typeof window === 'undefined') return false;
+      if (typeof window === "undefined") return false;
       const response = await freighterIsConnected();
-      
-      if (typeof response === 'object' && response !== null && 'isConnected' in response) {
+
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        "isConnected" in response
+      ) {
         return Boolean((response as any).isConnected);
       }
       return Boolean(response);
@@ -64,23 +69,29 @@ export class FreighterService {
       if (!connected) {
         await freighterRequestAccess();
       }
-      
-      const response = await freighterGetAddress();
-      let publicKey = '';
 
-      if (typeof response === 'object' && response !== null && 'address' in response) {
-        publicKey = String((response as any).address || '');
+      const response = await freighterGetAddress();
+      let publicKey = "";
+
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        "address" in response
+      ) {
+        publicKey = String((response as any).address || "");
       } else {
-        publicKey = String(response || '');
+        publicKey = String(response || "");
       }
 
       if (!publicKey) {
-        throw new Error('No public key returned from Freighter wallet.');
+        throw new Error("No public key returned from Freighter wallet.");
       }
-      
+
       return publicKey;
     } catch (error: any) {
-      throw new Error(`Failed to connect to Freighter: ${error.message || error}`);
+      throw new Error(
+        `Failed to connect to Freighter: ${error.message || error}`,
+      );
     }
   }
 
@@ -91,17 +102,23 @@ export class FreighterService {
   async getNetwork(): Promise<string> {
     try {
       const response = await freighterGetNetwork();
-      let networkStr = '';
+      let networkStr = "";
 
-      if (typeof response === 'object' && response !== null) {
-        networkStr = String((response as any).network || (response as any).id || '');
+      if (typeof response === "object" && response !== null) {
+        networkStr = String(
+          (response as any).network || (response as any).id || "",
+        );
       } else {
-        networkStr = String(response || '');
+        networkStr = String(response || "");
       }
 
-      return (networkStr || 'testnet').toLowerCase();
+      if (!networkStr)
+        throw new Error("Freighter did not report its active Stellar network.");
+      return networkStr;
     } catch (error) {
-      throw new Error('Failed to get network from Freighter');
+      throw new Error(
+        `Failed to get network from Freighter: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -114,21 +131,31 @@ export class FreighterService {
     try {
       const network = await this.getNetwork();
       const addressResp = await freighterGetAddress();
-      let publicKey = '';
+      let publicKey = "";
 
-      if (typeof addressResp === 'object' && addressResp !== null && 'address' in addressResp) {
-        publicKey = String((addressResp as any).address || '');
+      if (
+        typeof addressResp === "object" &&
+        addressResp !== null &&
+        "address" in addressResp
+      ) {
+        publicKey = String((addressResp as any).address || "");
       } else {
-        publicKey = String(addressResp || '');
+        publicKey = String(addressResp || "");
       }
 
       // Cast options parameter as any to prevent strict package signature mismatches
       const signedResponse = await freighterSignTransaction(xdr, {
-        network: network.toUpperCase().includes('PUBLIC') ? 'PUBLIC' : 'TESTNET',
+        network: network.toUpperCase().includes("PUBLIC")
+          ? "PUBLIC"
+          : "TESTNET",
         accountToSign: publicKey,
       } as any);
 
-      if (typeof signedResponse === 'object' && signedResponse !== null && 'signedTxXdr' in signedResponse) {
+      if (
+        typeof signedResponse === "object" &&
+        signedResponse !== null &&
+        "signedTxXdr" in signedResponse
+      ) {
         return String((signedResponse as any).signedTxXdr);
       }
       return String(signedResponse);
@@ -150,4 +177,5 @@ export class FreighterService {
     }
     return toHexSignature(response.signedMessage as string | Uint8Array | null);
   }
+}
 }

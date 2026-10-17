@@ -14,7 +14,7 @@ export default function MobileNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white sm:hidden"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background sm:hidden"
       role="navigation"
       aria-label="Mobile navigation"
     >
@@ -26,7 +26,7 @@ export default function MobileNav() {
               <Link
                 href={href}
                 className={`flex flex-col items-center py-3 text-xs font-medium transition-colors ${
-                  active ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
+                  active ? "text-brand" :"text-muted-foreground hover:text-foreground"
                 }`}
                 aria-current={active ? "page" : undefined}
               >

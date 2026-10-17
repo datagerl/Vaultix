@@ -12,6 +12,7 @@ import { EscrowSchedulerService } from './services/escrow-scheduler.service';
 import { EscrowController } from './controllers/escrow.controller';
 import { EscrowSchedulerController } from './controllers/escrow-scheduler.controller';
 import { EventsController } from './controllers/events.controller';
+import { EvidenceDownloadController } from './controllers/evidence-download.controller';
 import { EscrowAccessGuard } from './guards/escrow-access.guard';
 import { EscrowExpireGuard } from './guards/escrow-expire.guard';
 import { AuthModule } from '../auth/auth.module';
@@ -35,6 +36,7 @@ import { EscrowChainId } from './entities/escrow-chain-id.entity';
 import { EscrowChainIdService } from './services/escrow-chain-id.service';
 import { SorobanTxIntent } from './entities/soroban-tx-intent.entity';
 import { SorobanIntentService } from './services/soroban-intent.service';
+import { IdempotencyModule } from '../../common/idempotency/idempotency.module';
 import { EventsModule } from '../../gateways/events.module';
 
 @Module({
@@ -57,9 +59,15 @@ import { EventsModule } from '../../gateways/events.module';
     IpfsModule,
     NotificationsModule,
     EventsModule,
+    IdempotencyModule,
     forwardRef(() => AdminModule),
   ],
-  controllers: [EscrowController, EscrowSchedulerController, EventsController],
+  controllers: [
+    EscrowController,
+    EscrowSchedulerController,
+    EventsController,
+    EvidenceDownloadController,
+  ],
   providers: [
     EscrowService,
     EscrowCreationService,

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -15,9 +15,26 @@ export const WalletButton: React.FC = () => {
   const session = useSession();
   const router = useRouter();
   const pathname = usePathname();
+import React, { useState } from "react";
+import { Wallet, LogOut, Copy, Check, AlertCircle } from "lucide-react";
+import { useWalletConnection } from "@/app/hooks/useWallet";
+import { ConnectWalletModal } from "./ConnectWalletModal";
+import { truncateAddress } from "@/lib/utils";
+import {
+  getConfiguredStellarNetwork,
+  isStellarNetworkMismatch,
+} from "@/app/services/wallet/network";
+import { useWallet } from "@/app/contexts/WalletContext";
+
+export const WalletButton: React.FC = () => {
+  const { isConnected, wallet, disconnect, network } = useWalletConnection();
+  const { refreshNetwork } = useWallet();
+  const targetNetwork = getConfiguredStellarNetwork();
+  const networkMismatch = isStellarNetworkMismatch(network);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showDisconnect, setShowDisconnect] = useState(false);
+  const [isRefreshingNetwork, setIsRefreshingNetwork] = useState(false);
 
   // A restored wallet connection is not proof of identity: the user is only
   // "connected" here once a session exists for that same wallet.
@@ -49,6 +66,15 @@ export const WalletButton: React.FC = () => {
     setShowDisconnect(false);
   };
 
+  const handleRefreshNetwork = async () => {
+    setIsRefreshingNetwork(true);
+    try {
+      await refreshNetwork();
+    } finally {
+      setIsRefreshingNetwork(false);
+    }
+  };
+
   if (!isConnected) {
     return (
       <>
@@ -73,10 +99,25 @@ export const WalletButton: React.FC = () => {
     <div className="relative">
       <div className="flex items-center space-x-3">
         {/* Network Indicator */}
-        {network !== process.env.NEXT_PUBLIC_STELLAR_NETWORK && (
-          <div className="flex items-center space-x-1 px-2 py-1 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <AlertCircle className="w-3 h-3 text-red-400" />
-            <span className="text-xs text-red-400">Wrong Network</span>
+        {networkMismatch && (
+          <div
+            role="alert"
+            className="max-w-xs flex items-start gap-1.5 px-2 py-1 bg-red-500/10 border border-red-500/30 rounded-lg"
+          >
+            <AlertCircle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+            <span className="text-xs text-red-300">
+              {network === "unknown"
+                ? `Network unknown. Switch your wallet to ${targetNetwork ?? "the configured network"} and reconnect. Signing is blocked.`
+                : `Wrong network. Switch your wallet to ${targetNetwork ?? "the configured network"} to sign transactions.`}
+            </span>
+            <button
+              type="button"
+              onClick={handleRefreshNetwork}
+              disabled={isRefreshingNetwork}
+              className="shrink-0 text-xs font-semibold text-red-200 underline disabled:opacity-50"
+            >
+              {isRefreshingNetwork ? "Checking…" : "Recheck"}
+            </button>
           </div>
         )}
 
@@ -133,7 +174,7 @@ export const WalletButton: React.FC = () => {
                 <p className="text-sm text-gray-300 capitalize">
                   {wallet!.network}
                 </p>
-                {wallet!.network === process.env.NEXT_PUBLIC_STELLAR_NETWORK ? (
+                {!networkMismatch ? (
                   <div className="flex items-center space-x-1">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                     <span className="text-xs text-green-400">Correct</span>

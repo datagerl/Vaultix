@@ -44,7 +44,7 @@ export default function Pagination({
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="rounded p-2 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded p-2 text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Previous page"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -60,8 +60,8 @@ export default function Pagination({
           // Active page is highlighted in blue; others get a hover background
           className={`h-8 w-8 rounded text-sm font-medium transition-colors ${
             currentPage === page
-              ? "bg-blue-600 text-white"
-              : "text-gray-700 hover:bg-gray-100"
+              ? "bg-brand text-brand-foreground"
+              : "text-foreground hover:bg-accent"
           }`}
         >
           {page}
@@ -72,7 +72,7 @@ export default function Pagination({
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="rounded p-2 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded p-2 text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Next page"
       >
         <ChevronRight className="h-4 w-4" />

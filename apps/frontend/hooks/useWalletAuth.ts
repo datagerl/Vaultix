@@ -7,6 +7,7 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 const API_VERSION_PREFIX = "/v1";
+import { apiClient } from "@/lib/api-client";
 
 export interface WalletAuthState {
   loading: boolean;
@@ -57,6 +58,10 @@ export const useWalletAuth = () => {
       }
       const { message } = await challengeRes.json();
       if (!message) throw new Error("Failed to fetch sign-in challenge");
+      const { message } = await apiClient.post<{ message: string }>(
+        "/auth/challenge",
+        { walletAddress: publicKey },
+      );
 
       const signature = await service.signMessage(message, publicKey);
 
@@ -72,6 +77,13 @@ export const useWalletAuth = () => {
         throw new Error(await readErrorMessage(verifyRes, "Authentication failed"));
       }
       const { accessToken, refreshToken } = await verifyRes.json();
+      const { accessToken, refreshToken } = await apiClient.post<{
+        accessToken: string;
+        refreshToken: string;
+      }>("/auth/verify", {
+        publicKey,
+        signature: signedMessage,
+      });
       if (!accessToken || !refreshToken) {
         throw new Error("Authentication failed");
       }
@@ -80,10 +92,11 @@ export const useWalletAuth = () => {
 
       setState({ loading: false, error: null, token: accessToken });
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       setState({
         loading: false,
         error: err?.message ?? "Unknown error",
+        error: err instanceof Error ? err.message : "Unknown error",
         token: null,
       });
       return false;

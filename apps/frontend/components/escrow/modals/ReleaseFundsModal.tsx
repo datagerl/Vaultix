@@ -17,6 +17,7 @@ import TransactionTracker from "@/components/stellar/TransactionTracker";
 import { toast } from "sonner";
 import { CanonicalEscrowStatus } from '@/utils/escrowStatus';
 import { EscrowService } from "@/services/escrow";
+import { apiClient } from "@/lib/api-client";
 
 type ReleaseMode = "manual" | "auto";
 
@@ -181,6 +182,12 @@ export const ReleaseFundsModal: React.FC<ReleaseFundsModalProps> = ({
             ),
           ),
         ])) as { transactionHash?: string; status?: string };
+        const data = await apiClient.post<{
+          transactionHash?: string;
+          status?: string;
+        }>(`/escrows/${escrow.id}/release`, undefined, {
+          signal: abortController.signal,
+        });
 
         if (data.transactionHash) {
           setTxHash(data.transactionHash);

@@ -38,15 +38,15 @@ const SelectRoot = forwardRef<HTMLSelectElement, SelectProps>(
         <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
           <div className={twMerge('space-y-2', containerClassName)}>
             {label && (
-              <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">
+              <label htmlFor={inputId} className="block text-sm font-medium text-foreground">
                 {label}
               </label>
             )}
             {children}
             {helperText && !error && (
-              <p className="text-xs text-gray-500">{helperText}</p>
+              <p className="text-xs text-muted-foreground">{helperText}</p>
             )}
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         </SelectContext.Provider>
       );
@@ -56,7 +56,7 @@ const SelectRoot = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className={twMerge('space-y-2', containerClassName)}>
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">
+          <label htmlFor={inputId} className="block text-sm font-medium text-foreground">
             {label}
           </label>
         )}
@@ -69,8 +69,8 @@ const SelectRoot = forwardRef<HTMLSelectElement, SelectProps>(
               onValueChange?.(e.target.value);
             }}
             className={twMerge(
-              'block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border text-gray-900',
-              error && 'border-red-500 focus:border-red-500 focus:ring-red-500',
+              'block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm p-2 border text-foreground',
+              error && 'border-destructive focus:border-destructive focus:ring-destructive',
               className
             )}
             {...props}
@@ -85,9 +85,9 @@ const SelectRoot = forwardRef<HTMLSelectElement, SelectProps>(
           </select>
         </div>
         {helperText && !error && (
-          <p className="text-xs text-gray-500">{helperText}</p>
+          <p className="text-xs text-muted-foreground">{helperText}</p>
         )}
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     );
   }
@@ -104,7 +104,7 @@ const SelectTrigger = forwardRef<HTMLButtonElement, { children?: React.ReactNode
         ref={ref}
         type="button"
         className={twMerge(
-          'flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+          'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}
         onClick={() => setOpen?.(!open)}
@@ -127,7 +127,7 @@ const SelectContent = ({ children, className }: { children: React.ReactNode; cla
   if (!open) return null;
   
   return (
-    <div className={twMerge('absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-300 bg-white shadow-lg', className)}>
+    <div className={twMerge('absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-popover text-popover-foreground shadow-lg', className)}>
       {children}
     </div>
   );
@@ -138,7 +138,7 @@ const SelectItem = ({ children, value, className }: { children: React.ReactNode;
   
   return (
     <div
-      className={twMerge('relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none hover:bg-gray-100', className)}
+      className={twMerge('relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none hover:bg-accent hover:text-accent-foreground', className)}
       onClick={() => {
         onValueChange?.(value);
         setOpen?.(false);
