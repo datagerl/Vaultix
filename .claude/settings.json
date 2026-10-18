@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd C:\\\\Users\\\\Administrator\\\\Documents\\\\github\\\\Vaultix\\\\apps\\\\frontend\\\\node_modules\\\\@stellar\\\\freighter-api\\\\build; $s = Get-Content index.min.js -Raw; $m = [regex]::Matches\\($s, 'type:e\\\\.REQUEST_NETWORK\\\\}'\\); foreach \\($x in $m\\) { $s.Substring\\($x.Index-150, 450\\) }; \"----isConnected\"; $i = $s.IndexOf\\('window.freighter'\\); $s.Substring\\($i-200, 400\\))",
+      "PowerShell(cd C:\\\\Users\\\\Administrator\\\\Documents\\\\github\\\\Vaultix\\\\apps\\\\frontend\\\\node_modules\\\\@stellar\\\\freighter-api\\\\build; $s = Get-Content index.min.js -Raw; $m = [regex]::Matches\\($s, 'REQUEST_NETWORK[^_]'\\); foreach \\($x in $m\\) { \"@@ \" + $s.Substring\\([Math]::Max\\(0,$x.Index-150\\), 420\\) })",
+      "PowerShell(cd C:\\\\Users\\\\Administrator\\\\Documents\\\\github\\\\Vaultix\\\\apps\\\\frontend\\\\node_modules\\\\@stellar\\\\freighter-api; Get-Content src\\\\index.ts; Get-ChildItem -Recurse -Filter external.ts -Path .. ,..\\\\.. -ErrorAction SilentlyContinue | Select -First 3 -Expand FullName; $s = Get-Content build\\\\index.min.js -Raw; $i = $s.IndexOf\\('getNetwork'\\); while \\($i -ge 0\\) { \"@@ \" + $s.Substring\\([Math]::Max\\(0,$i-100\\), 250\\); $i = $s.IndexOf\\('getNetwork', $i+1\\) })",
+      "PowerShell(cd C:\\\\Users\\\\Administrator\\\\Documents\\\\github\\\\Vaultix\\\\apps\\\\frontend\\\\node_modules\\\\@stellar\\\\freighter-api; $s = Get-Content build\\\\index.min.js -Raw; $i = $s.IndexOf\\(',C=async'\\); if \\($i -lt 0\\) { $i = $s.IndexOf\\('C=async'\\) }; $s.Substring\\($i, [Math]::Min\\(500, $s.Length-$i\\)\\))"
+    ]
+  }
+}
