@@ -1,6 +1,6 @@
 'use client'; // Next.js directive: this component runs on the client (uses hooks, browser APIs)
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion'; // AnimatePresence handles enter/exit animations of list items
 import { Filter, Loader2, RefreshCw, Zap } from 'lucide-react';
 import { useEvents } from '@/hooks/useEvents'; // Custom hook wrapping a paginated (infinite) query for escrow events
@@ -104,7 +104,14 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
     }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     // Flatten all loaded pages into one array of events (empty array if no data yet)
-    const allEvents = data?.pages.flatMap(page => page.events) || [];
+    const allEvents = useMemo(() => {
+        const seenEventIds = new Set<string>();
+        return data?.pages.flatMap(page => page.events).filter((event) => {
+            if (seenEventIds.has(event.id)) return false;
+            seenEventIds.add(event.id);
+            return true;
+        }) ?? [];
+    }, [data]);
 
     return (
         // Root card container; `className` lets parents customize sizing/spacing

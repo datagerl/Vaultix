@@ -69,6 +69,28 @@ describe('ActivityFeed', () => {
     expect(screen.getByText('Event 2')).toBeInTheDocument();
   });
 
+  it('deduplicates events with the same stable ID across pages', () => {
+    (useEvents as jest.Mock).mockReturnValue({
+      data: {
+        pages: [
+          { events: [{ id: '1', title: 'Event 1' }, { id: '2', title: 'Event 2' }] },
+          { events: [{ id: '2', title: 'Duplicate Event 2' }, { id: '3', title: 'Event 3' }] },
+        ],
+      },
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      status: 'success',
+      refetch: mockRefetch,
+      isFetching: false,
+    });
+
+    render(<ActivityFeed />);
+
+    expect(screen.getAllByTestId('activity-item')).toHaveLength(3);
+    expect(screen.queryByText('Duplicate Event 2')).not.toBeInTheDocument();
+  });
+
   it('shows skeleton when status is pending', () => {
     (useEvents as jest.Mock).mockReturnValue({
       status: 'pending',

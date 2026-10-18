@@ -25,9 +25,7 @@ export class EscrowService {
   static async getEvents(
     filters: IEscrowEventFilters = {},
   ): Promise<IEscrowEventResponse> {
-    // If the underlying API expects a string (escrowId) instead of an object, handle it here:
-    const param = filters.escrowId || (typeof filters === 'string' ? filters : '');
-    return await (ApiEscrowService.getEvents as any)(param);
+    return ApiEscrowService.getEvents(filters);
   }
 
   static async getEscrowById(id: string): Promise<IEscrow | null> {

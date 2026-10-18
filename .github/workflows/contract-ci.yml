@@ -50,3 +50,6 @@ jobs:
       - name: Run tests
         run: cargo test
 
+      - name: Check Soroban budget regression baseline
+        run: cargo test budget -- --nocapture
+

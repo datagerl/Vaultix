@@ -1,0 +1,20 @@
+{
+  "entries": {
+    "create_escrow": {
+      "cpu": 416461,
+      "memory": 161800,
+      "read_entries": 13,
+      "write_entries": 7,
+      "mem_bytes": 45692,
+      "write_bytes": 1656
+    },
+    "list_escrows_by_party": {
+      "cpu": 1334178,
+      "memory": 603318,
+      "read_entries": 23,
+      "write_entries": 0,
+      "mem_bytes": 79236,
+      "write_bytes": 0
+    }
+  }
+}

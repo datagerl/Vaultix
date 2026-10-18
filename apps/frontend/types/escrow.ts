@@ -86,10 +86,12 @@ export type EscrowEventType =
 
 export interface IEscrowEvent {
   id: string;
+  escrowId?: string;
   eventType: EscrowEventType;
   actorId?: string;
   data?: Record<string, any>;
   ipAddress?: string;
+  cursor?: string;
   createdAt: string;
 }
 
@@ -160,13 +162,23 @@ export interface IEscrowEventResponse {
   events: IEscrowEvent[];
   hasNextPage: boolean;
   totalCount: number;
+  page: number;
+  limit: number;
 }
 
 export interface IEscrowEventFilters {
   escrowId?: string;
-  eventType?: string;
+  eventType?: EscrowEventType;
   page?: number;
   limit?: number;
+  actorId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: "createdAt" | "eventType" | "cursor";
+  sortOrder?: "ASC" | "DESC";
+  cursor?: string;
+  after?: string;
+  before?: string;
 }
 
 // Dispute related interfaces

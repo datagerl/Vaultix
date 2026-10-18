@@ -139,12 +139,74 @@ describe('EscrowService status normalization at the API boundary', () => {
       expect(get.mock.calls[0][0]).toContain('status=expired');
     });
 
+    it('includes a wallet address filter', async () => {
+      get.mockResolvedValue({ escrows: [], hasNextPage: false });
+
+      await EscrowService.getEscrows({ walletAddress: 'GABC' });
+
+      expect(get.mock.calls[0][0]).toContain('walletAddress=GABC');
+    });
+
     it('omits the status param entirely for the "all" sentinel', async () => {
       get.mockResolvedValue({ escrows: [], hasNextPage: false });
 
       await EscrowService.getEscrows({ status: 'all' });
 
       expect(get.mock.calls[0][0]).not.toContain('status=');
+    });
+  });
+
+  describe('getEvents', () => {
+    const event = {
+      id: 'event-1',
+      eventType: 'COMPLETED',
+      createdAt: '2025-01-01',
+    };
+
+    it('uses the global events endpoint and translates pagination metadata', async () => {
+      get.mockResolvedValue({
+        data: [event],
+        total: 21,
+        page: 2,
+        limit: 10,
+      });
+
+      const result = await EscrowService.getEvents({ page: 2, limit: 10 });
+
+      expect(get).toHaveBeenCalledWith('/events?page=2&limit=10');
+      expect(result).toEqual({
+        events: [event],
+        totalCount: 21,
+        page: 2,
+        limit: 10,
+        hasNextPage: true,
+      });
+    });
+
+    it('uses the escrow-scoped endpoint and forwards supported filters', async () => {
+      get.mockResolvedValue({
+        data: [event],
+        total: 1,
+        page: 1,
+        limit: 10,
+      });
+
+      const result = await EscrowService.getEvents({
+        escrowId: 'escrow-1',
+        page: 1,
+        limit: 10,
+        eventType: 'COMPLETED',
+        actorId: 'actor-1',
+        dateFrom: '2025-01-01T00:00:00.000Z',
+        dateTo: '2025-01-31T23:59:59.000Z',
+        sortBy: 'createdAt',
+        sortOrder: 'ASC',
+      });
+
+      expect(get).toHaveBeenCalledWith(
+        '/escrows/escrow-1/events?page=1&limit=10&eventType=COMPLETED&escrowId=escrow-1&actorId=actor-1&dateFrom=2025-01-01T00%3A00%3A00.000Z&dateTo=2025-01-31T23%3A59%3A59.000Z&sortBy=createdAt&sortOrder=ASC',
+      );
+      expect(result.hasNextPage).toBe(false);
     });
   });
 });

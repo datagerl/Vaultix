@@ -102,6 +102,14 @@ This command builds the Wasm contract and emits the current contract metadata/sp
 
 The GitHub Actions flow now exports the contract spec artifact as a build artifact so reviewers and downstream systems can verify interface compatibility.
 
+## Soroban Budget Regression Guard
+
+The contract test suite includes a resource-budget benchmark for the highest-traffic read/write entrypoints. It measures CPU, memory, and ledger-entry consumption using the Soroban test host's `cost_estimate()` API and records the numbers in `apps/onchain/budget-baseline.json`.
+
+- `cargo test --manifest-path apps/onchain/Cargo.toml budget -- --nocapture` compares the current measurements to the committed baseline and fails when the usage grows beyond a 20% threshold.
+- `UPDATE_BUDGET_BASELINE=1 cargo test --manifest-path apps/onchain/Cargo.toml budget -- --nocapture` refreshes the stored values after a deliberate, reviewed optimization or behavior change.
+- The GitHub Action in `.github/workflows/contract-ci.yml` runs the same check on every contract CI build so regressions are visible before merge.
+
 ## Public Interface Versioning Policy
 
 The `VaultixEscrow` contract follows a semver-style compatibility policy for public entrypoints and on-chain types:

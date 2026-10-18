@@ -9,6 +9,7 @@ interface PartyAcceptanceModalProps {
   onClose: () => void;
   escrow: IEscrowExtended;
   party: IParty;
+  initialConfirmationType?: ConfirmationType;
   onAccept: (escrowId: string, partyId: string) => Promise<void>;
   onReject: (escrowId: string, partyId: string) => Promise<void>;
 }
@@ -20,10 +21,12 @@ export const PartyAcceptanceModal: React.FC<PartyAcceptanceModalProps> = ({
   onClose,
   escrow,
   party,
+  initialConfirmationType = null,
   onAccept,
   onReject,
 }) => {
-  const [confirmationType, setConfirmationType] = useState<ConfirmationType>(null);
+  const [confirmationType, setConfirmationType] =
+    useState<ConfirmationType>(initialConfirmationType);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

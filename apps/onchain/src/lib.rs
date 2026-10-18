@@ -3297,6 +3297,8 @@ fn seconds_to_ledgers(seconds: u64) -> u32 {
 }
 
 #[cfg(test)]
+mod budget;
+#[cfg(test)]
 mod fee_tests;
 #[cfg(test)]
 mod invariant_tests;

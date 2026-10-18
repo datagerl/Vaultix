@@ -16,6 +16,8 @@ import { PlusCircle, Activity, X } from "lucide-react";
 import { useEscrowEvents } from "@/hooks/useEscrowEvents";
 import { EscrowCardSkeleton } from "@/components/ui/EscrowCardSkeleton";
 import { ActivityFeedSkeleton } from "@/components/ui/ActivityFeedSkeleton";
+import PendingInvitations from "@/components/dashboard/PendingInvitations";
+import { useWalletSession } from "@/hooks/useWalletSession";
 import {
   CanonicalEscrowStatus,
   normalizeEscrowStatus,
@@ -27,6 +29,7 @@ function DashboardContent() {
   const router = useRouter();
   const pathname = usePathname();
   const [showActivity, setShowActivity] = useState(false);
+  const { activePublicKey, canPerformProtectedActions } = useWalletSession();
 
   useEscrowEvents();
 
@@ -111,6 +114,12 @@ function DashboardContent() {
 
   return (
     <>
+      <PendingInvitations
+        walletAddress={
+          canPerformProtectedActions ? activePublicKey : null
+        }
+      />
+
       {/* Mobile Activity Drawer */}
       {showActivity && (
         <div className="fixed inset-0 z-50 lg:hidden">

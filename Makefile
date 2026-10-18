@@ -2,7 +2,7 @@
 
 COMPOSE := docker compose -f apps/backend/docker-compose.yml
 
-.PHONY: help dev dev-backend dev-frontend test lint build db-up db-reset contract-test
+.PHONY: help dev dev-backend dev-frontend test lint build db-up db-reset contract-test contract-budget contract-budget-check
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)

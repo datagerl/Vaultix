@@ -1,4 +1,9 @@
-import { ICondition, IDispute, IEscrowExtended } from "@/types/escrow";
+import {
+  ICondition,
+  IDispute,
+  IEscrowExtended,
+  IParty,
+} from "@/types/escrow";
 import type { RawEscrowExtended } from "@/types/escrow";
 import { apiClient } from "./api-client";
 import {
@@ -28,6 +33,39 @@ export const fetchEscrow = async (id: string): Promise<IEscrowExtended> => {
   const escrow = await request<RawEscrowExtended>(`/escrows/${id}`);
   return { ...escrow, status: normalizeEscrowStatus(escrow.status) };
 };
+
+export interface PendingPartyInvitation {
+  escrow: IEscrowExtended;
+  party: IParty;
+}
+
+type PendingInvitationResponse = Omit<IParty, "status"> & {
+  status: string;
+  escrow: RawEscrowExtended;
+};
+
+function isPendingInvitation(
+  party: PendingInvitationResponse,
+): party is PendingInvitationResponse & { status: IParty["status"] } {
+  return party.status.toUpperCase() === "PENDING";
+}
+
+export const fetchPendingPartyInvitations =
+  async (): Promise<PendingPartyInvitation[]> => {
+    const response = await request<PendingInvitationResponse[]>(
+      "/escrows/pending-invitations",
+    );
+
+    return response
+      .filter(isPendingInvitation)
+      .map(({ escrow, ...party }) => ({
+        escrow: {
+          ...escrow,
+          status: normalizeEscrowStatus(escrow.status),
+        },
+        party,
+      }));
+  };
 
 export const acceptPartyInvitation = (escrowId: string, partyId: string) =>
   request(`/escrows/${escrowId}/parties/${partyId}/accept`, {

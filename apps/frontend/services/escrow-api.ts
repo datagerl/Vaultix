@@ -57,6 +57,9 @@ export class EscrowService {
     if (filters.sortOrder) {
       params.set('sortOrder', filters.sortOrder);
     }
+    if (filters.walletAddress) {
+      params.set('walletAddress', filters.walletAddress);
+    }
 
     const queryString = params.toString();
     const response = await apiClient.get<RawEscrowResponse>(
@@ -126,25 +129,65 @@ export class EscrowService {
   }
 
   static async getEvents(
-    escrowId: string, 
-    filters: IEscrowEventFilters = {}
+    filters: IEscrowEventFilters = {},
   ): Promise<IEscrowEventResponse> {
     const params = new URLSearchParams();
-    
-    if (filters.page) {
+
+    if (filters.page !== undefined) {
       params.set('page', String(filters.page));
     }
-    if (filters.limit) {
+    if (filters.limit !== undefined) {
       params.set('limit', String(filters.limit));
     }
     if (filters.eventType && filters.eventType !== 'ALL') {
       params.set('eventType', filters.eventType);
     }
+    if (filters.escrowId) {
+      params.set('escrowId', filters.escrowId);
+    }
+    if (filters.actorId) {
+      params.set('actorId', filters.actorId);
+    }
+    if (filters.dateFrom) {
+      params.set('dateFrom', filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      params.set('dateTo', filters.dateTo);
+    }
+    if (filters.sortBy) {
+      params.set('sortBy', filters.sortBy);
+    }
+    if (filters.sortOrder) {
+      params.set('sortOrder', filters.sortOrder);
+    }
+    if (filters.cursor) {
+      params.set('cursor', filters.cursor);
+    }
+    if (filters.after) {
+      params.set('after', filters.after);
+    }
+    if (filters.before) {
+      params.set('before', filters.before);
+    }
 
     const queryString = params.toString();
-    return apiClient.get<IEscrowEventResponse>(
-      `/escrows/${escrowId}/events${queryString ? `?${queryString}` : ''}`
-    );
+    const endpoint = filters.escrowId
+      ? `/escrows/${encodeURIComponent(filters.escrowId)}/events`
+      : '/events';
+    const response = await apiClient.get<{
+      data: IEscrowEvent[];
+      total: number;
+      page: number;
+      limit: number;
+    }>(`${endpoint}${queryString ? `?${queryString}` : ''}`);
+
+    return {
+      events: response.data,
+      totalCount: response.total,
+      page: response.page,
+      limit: response.limit,
+      hasNextPage: response.page * response.limit < response.total,
+    };
   }
 
   static async updateEscrowStatus(id: string, status: IEscrow['status']): Promise<IEscrow> {
