@@ -6,7 +6,6 @@ import { Menu, X } from "lucide-react";
 import NotificationBell from "@/components/common/NotificationBell";
 import ConnectionStatusIndicator from "@/components/common/ConnectionStatusIndicator";
 import { WalletButton } from "@/components/wallet/WalletButton";
-import { useTheme } from "@/components/ThemeProvider";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const NAV_LINKS = [

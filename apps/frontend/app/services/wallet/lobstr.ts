@@ -40,7 +40,7 @@ export class LobstrService {
     }
     try {
       const publicKey = await window.lobstr.getPublicKey();
-      return String(publicKey);
+      return publicKey;
     } catch (error: any) {
       throw new Error(`Failed to connect to Lobstr: ${error.message}`);
     }
@@ -84,7 +84,7 @@ export class LobstrService {
     }
   }
 
-  async signMessage(message: string, _publicKey?: string): Promise<string> {
+  async signMessage(message: string): Promise<string> {
     if (typeof window === 'undefined' || !window.lobstr) {
       throw new Error('Lobstr wallet is not installed');
     }

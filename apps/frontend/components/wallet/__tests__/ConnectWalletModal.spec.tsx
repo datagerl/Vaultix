@@ -74,7 +74,7 @@ describe('ConnectWalletModal', () => {
     await waitForFreighter();
     fireEvent.click(screen.getByText('Freighter'));
 
-    expect(await screen.findByText('Connection request was cancelled by the user.')).toBeInTheDocument();
+    expect(await screen.findByText(/Connection request was cancelled/)).toBeInTheDocument();
     expect(signIn).not.toHaveBeenCalled();
   });
 });

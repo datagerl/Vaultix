@@ -18,10 +18,9 @@ export interface WalletConnection {
 
 export interface IWalletService {
   connect(): Promise<string>;
-  signTransaction(xdr: string): Promise<string>;
+  signTransaction(xdr: string, publicKey?: string): Promise<string>;
   /** Signs an arbitrary message (used for sign-in). Resolves to a hex-encoded signature. */
   signMessage?(message: string, publicKey: string): Promise<string>;
-  signTransaction(xdr: string, publicKey?: string): Promise<string>;
   getNetwork?(): Promise<string>;
   isInstalled?(): Promise<boolean>;
   disconnect?(): Promise<void>;

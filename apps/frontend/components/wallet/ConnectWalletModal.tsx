@@ -16,6 +16,7 @@ import { useWalletAuth } from "@/hooks/useWalletAuth";
 interface ConnectWalletModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Called after the wallet is connected and the sign-in challenge succeeds. */
   onSignedIn?: () => void;
 }
 
@@ -67,7 +68,6 @@ export const getWalletConnectionErrorMessage = (
   const value = error instanceof Error ? error.message : String(error ?? "");
   const normalized = value.toLowerCase();
   const candidate = error as { code?: number; status?: string } | null;
-
   if (
     normalized.includes("reject") ||
     candidate?.status?.toLowerCase() === "rejected" ||
@@ -81,7 +81,6 @@ export const getWalletConnectionErrorMessage = (
   if (normalized.includes("network")) {
     return `Wallet network could not be verified. Switch your wallet to ${targetNetwork} and reconnect.`;
   }
-
   return value || "Wallet connection failed. Please try again.";
 };
 
@@ -97,14 +96,15 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
     error: contextError,
   } = useWallet();
   const { signIn, loading: isSigningIn } = useWalletAuth();
-
   const isConnecting = isWalletConnecting || isSigningIn;
   const [availableWallets, setAvailableWallets] = useState<WalletType[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletKey | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const targetNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK || "testnet";
 
+  // Hydrate supported local platform targets when modal swings open
   useEffect(() => {
     if (!isOpen) return;
     setLocalError(null);
@@ -112,44 +112,45 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
 
     getAvailableWallets()
       .then((wallets) => setAvailableWallets(wallets))
-      .catch((err) => {
-        console.error("[Wallet Modal] Failed to parse extensions:", err);
-      });
+      .catch((err) =>
+        console.error("[Wallet Modal] Failed to parse extensions:", err),
+      );
   }, [isOpen, getAvailableWallets]);
 
+  // Cleanup timeout handles when tearing down components
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
   const handleConnect = useCallback(
-    async (walletKey: WalletKey) => {
+    async (walletType: WalletKey) => {
+      // Prevent double-submits / concurrent racing threads
       if (isConnecting) return;
 
-      setSelectedWallet(walletKey);
+      setSelectedWallet(walletType);
       setLocalError(null);
 
+      // 1. Enforce Timeout Race Loop (30 Seconds)
       timeoutRef.current = setTimeout(() => {
-        if (isConnecting || selectedWallet === walletKey) {
+        if (isConnecting || selectedWallet === walletType) {
           setLocalError(
             "Connection handshake timed out after 30 seconds. Please try again.",
           );
           setSelectedWallet(null);
           console.error(
-            `[Wallet Timeout] Connection request dropped for type: ${walletKey}`,
+            `[Wallet Timeout] Connection request dropped for type: ${walletType}`,
           );
         }
       }, 30000);
 
       try {
-        const connection = await connect(WALLET_TYPE_BY_KEY[walletKey]);
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
+        const connection = await connect(WALLET_TYPE_BY_KEY[walletType]);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
+        // Connecting only proves which account the wallet exposes; signing the
+        // backend challenge is what creates the authenticated session.
         const signedIn = await signIn(connection);
         if (!signedIn) {
           setSelectedWallet(null);
@@ -162,39 +163,36 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
         onClose();
         onSignedIn?.();
       } catch (err: any) {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setSelectedWallet(null);
-        setLocalError(
-          getWalletConnectionErrorMessage(err, targetNetwork),
-        );
+
+        setLocalError(getWalletConnectionErrorMessage(err, targetNetwork));
+
         console.error(
-          `[Wallet Connection Failure] Context mapping for ${walletKey}:`,
+          `[Wallet Connection Failure] Context mapping for ${walletType}:`,
           err,
         );
       }
     },
-    [connect, isConnecting, onClose, onSignedIn, selectedWallet, signIn, targetNetwork],
+    [isConnecting, connect, signIn, onClose, onSignedIn, targetNetwork, selectedWallet],
   );
 
   if (!isOpen) return null;
 
+  // Derive consolidated active error frames
   const displayError = localError || contextError;
-  const walletsToRender = (Object.keys(WALLET_INFO) as WalletKey[]).filter(
-    (walletKey) =>
-      WALLET_INFO[walletKey].alwaysAvailable ||
-      availableWallets.includes(WALLET_TYPE_BY_KEY[walletKey]),
-  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
       <div className="relative w-full max-w-md rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 p-6 shadow-2xl space-y-5">
+        {/* HEADER SECTION */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-extrabold text-white">Connect Wallet</h2>
+            <h2 className="text-xl font-extrabold text-white">
+              Connect Wallet
+            </h2>
             <p className="text-gray-400 text-xs mt-0.5">
-              Choose a wallet provider to connect to Vaultix
+              Choose a ledger provider link to connect to Vaultix
             </p>
           </div>
           <button
@@ -202,14 +200,14 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
             disabled={isConnecting}
             className="p-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-30"
             aria-label="Close Modal"
-            type="button"
           >
             <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
 
+        {/* ACTIONABLE CONTEXTUAL ERROR ANCHORS */}
         {displayError && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2.5 text-xs text-red-400">
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2.5 text-xs text-red-400 animate-shake">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <div className="flex-1 space-y-2">
               <p className="leading-relaxed font-medium">{displayError}</p>
@@ -226,49 +224,13 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
           </div>
         )}
 
+        {/* INTEGRATED CARD OPTION BUTTON LIST */}
         <div className="space-y-2.5">
-          {walletsToRender.map((walletKey) => {
-            const info = WALLET_INFO[walletKey];
-            const isSelected = selectedWallet === walletKey;
-            const isAvailable =
-              info.alwaysAvailable ||
-              availableWallets.includes(WALLET_TYPE_BY_KEY[walletKey]);
-
-            return (
-              <button
-                key={walletKey}
-                type="button"
-                onClick={() => handleConnect(walletKey)}
-                disabled={isConnecting || !isAvailable}
-                className="w-full flex items-center justify-between rounded-xl border border-gray-700 bg-gray-800/70 p-3 text-left transition hover:border-blue-500 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl" aria-hidden="true">{info.icon}</span>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-white">{info.name}</span>
-                      {isSelected && isConnecting && (
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400">{info.description}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  {!info.alwaysAvailable && !isAvailable && (
-                    <span>Not installed</span>
-                  )}
-                  {info.alwaysAvailable && <Check className="w-4 h-4 text-green-400" />}
-                  <ExternalLink className="w-4 h-4" />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
+          {(
+            Object.entries(WALLET_INFO) as [
+              WalletKey,
+              (typeof WALLET_INFO)[WalletKey],
+            ][]
           ).map(([type, info]) => {
             const isAvailable =
               info.alwaysAvailable ||

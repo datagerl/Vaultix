@@ -242,15 +242,14 @@ export class MockApi {
     }
 
     // --- escrow reads ---
+    if (method === 'GET' && path === '/escrows/pending-invitations') return { body: [] };
     if (method === 'GET' && path === '/escrows') {
       const escrows = [...this.escrows.values()];
       return { body: { escrows, hasNextPage: false, totalPages: 1, totalCount: escrows.length } };
     }
-    if (method === 'GET' && (m = path.match(/^\/escrows\/[^/]*\/events$/))) {
-      // apiClient's activity feed and lib/escrow-api's timeline expect different envelopes.
-      return client === 'api'
-        ? { body: { events: [], hasNextPage: false } }
-        : { body: { data: [], total: 0, page: 1, limit: 100 } };
+    if (method === 'GET' && (path === '/events' || /^\/escrows\/[^/]*\/events$/.test(path))) {
+      // Backend envelope used by both the activity feed and the timeline.
+      return { body: { data: [], total: 0, page: 1, limit: 100 } };
     }
     if (method === 'GET' && (m = path.match(/^\/escrows\/([^/]+)\/dispute\/timeline$/))) {
       return { body: { timeline: [] } };

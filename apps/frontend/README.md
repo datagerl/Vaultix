@@ -22,7 +22,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Signing in
 
-**Connect Wallet** in the header connects a Stellar wallet (Freighter, Albedo or Lobstr), then signs the backend's challenge to start a session. The session sets the `vaultix_token` cookie that `middleware.ts` requires for `/dashboard`, `/escrow/*` and the other protected routes. If the user was redirected to `/?returnTo=…`, they land back on that page after signing in.
+**Connect Wallet** in the header connects a Stellar wallet (Freighter, Albedo or Lobstr; xBull can connect but its provider has no message signing, so it can't sign in yet), then signs the backend's challenge to start a session. The session sets the `vaultix_token` cookie that `middleware.ts` requires for `/dashboard`, `/escrow/*` and the other protected routes. If the user was redirected to `/?returnTo=…`, they land back on that page after signing in.
 
 A wallet that is connected but not signed in shows **Sign In** instead. Escrow actions (fund, release, dispute) are authorised by the signed-in wallet.
 
@@ -50,6 +50,7 @@ The Playwright suite (`e2e/`) covers the critical path: **login → create escro
 The base URL is `http://localhost:3000`, not `127.0.0.1`. The middleware redirects to `localhost`, and cookies and `localStorage` are per-origin.
 
 In CI, the **Frontend CI** workflow runs lint, type-check and unit tests with coverage in one job, and headless Playwright in a separate `e2e` job. The coverage report (`frontend-coverage`) and the Playwright report (`frontend-playwright-report`) are uploaded as artifacts. The coverage totals also appear in the job summary.
+
 ## Theming (light / dark / system)
 
 Users choose **Light**, **Dark** or **System** from the theme menu in the header or under **Settings → Appearance**. **System** follows the OS `prefers-color-scheme` setting and updates live when it changes.
@@ -67,7 +68,6 @@ Two tests enforce this:
 - `lib/theme-contrast.test.ts` computes WCAG 2.1 contrast for each text/background token pair in both themes and fails below AA (4.5:1).
 - `lib/theme-tokens.test.ts` fails if a migrated file reintroduces raw neutral classes such as `bg-white` or `text-gray-700`. When you migrate a component, add it to `TOKENIZED_FILES`.
 
-## Learn More
 ## Docker
 
 Build from this directory with browser-visible configuration provided as build

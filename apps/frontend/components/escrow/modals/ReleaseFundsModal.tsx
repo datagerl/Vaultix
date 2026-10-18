@@ -16,7 +16,6 @@ import { IEscrowExtended } from "@/types/escrow";
 import TransactionTracker from "@/components/stellar/TransactionTracker";
 import { toast } from "sonner";
 import { CanonicalEscrowStatus } from '@/utils/escrowStatus';
-import { EscrowService } from "@/services/escrow";
 import { apiClient } from "@/lib/api-client";
 
 type ReleaseMode = "manual" | "auto";
@@ -172,16 +171,6 @@ export const ReleaseFundsModal: React.FC<ReleaseFundsModalProps> = ({
         setSigningPhase("waiting");
         await Promise.resolve();
         setSigningPhase("submitting");
-        // The API performs the on-chain release and answers with
-        // `{ id, status, transactionHash }`.
-        const data = (await Promise.race([
-          EscrowService.releaseEscrow(escrow.id),
-          new Promise<never>((_, reject) =>
-            abortController.signal.addEventListener("abort", () =>
-              reject(new Error("TRANSACTION_TIMEOUT")),
-            ),
-          ),
-        ])) as { transactionHash?: string; status?: string };
         const data = await apiClient.post<{
           transactionHash?: string;
           status?: string;

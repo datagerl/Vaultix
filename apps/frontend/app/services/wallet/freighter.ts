@@ -25,6 +25,10 @@ export class FreighterService {
 
   private constructor() {}
 
+  /**
+   * Retrieves the singleton instance of the FreighterService.
+   * @returns {FreighterService} The singleton service instance.
+   */
   public static getInstance(): FreighterService {
     if (!FreighterService.instance) {
       FreighterService.instance = new FreighterService();
@@ -32,6 +36,10 @@ export class FreighterService {
     return FreighterService.instance;
   }
 
+  /**
+   * Checks if the Freighter wallet extension is installed and accessible.
+   * @returns {Promise<boolean>} True if connected/available.
+   */
   async isInstalled(): Promise<boolean> {
     try {
       if (typeof window === "undefined") return false;
@@ -45,11 +53,15 @@ export class FreighterService {
         return Boolean((response as any).isConnected);
       }
       return Boolean(response);
-    } catch {
+    } catch (error) {
       return false;
     }
   }
 
+  /**
+   * Requests access to the Freighter wallet and retrieves the user's public address.
+   * @returns {Promise<string>} The public key address.
+   */
   async connect(): Promise<string> {
     try {
       const connected = await this.isInstalled();
@@ -82,6 +94,10 @@ export class FreighterService {
     }
   }
 
+  /**
+   * Retrieves the current Stellar network from Freighter.
+   * @returns {Promise<string>} The lowercase network identifier.
+   */
   async getNetwork(): Promise<string> {
     try {
       const response = await freighterGetNetwork();
@@ -95,9 +111,8 @@ export class FreighterService {
         networkStr = String(response || "");
       }
 
-      if (!networkStr) {
+      if (!networkStr)
         throw new Error("Freighter did not report its active Stellar network.");
-      }
       return networkStr;
     } catch (error) {
       throw new Error(
@@ -106,29 +121,33 @@ export class FreighterService {
     }
   }
 
-  async signTransaction(xdr: string, publicKey?: string): Promise<string> {
+  /**
+   * Signs a transaction XDR string using Freighter.
+   * @param {string} xdr - The transaction XDR payload.
+   * @returns {Promise<string>} Signed transaction XDR.
+   */
+  async signTransaction(xdr: string): Promise<string> {
     try {
       const network = await this.getNetwork();
-      const addressResp = publicKey
-        ? { address: publicKey }
-        : await freighterGetAddress();
-      let resolvedPublicKey = "";
+      const addressResp = await freighterGetAddress();
+      let publicKey = "";
 
       if (
         typeof addressResp === "object" &&
         addressResp !== null &&
         "address" in addressResp
       ) {
-        resolvedPublicKey = String((addressResp as any).address || "");
+        publicKey = String((addressResp as any).address || "");
       } else {
-        resolvedPublicKey = String(addressResp || "");
+        publicKey = String(addressResp || "");
       }
 
+      // Cast options parameter as any to prevent strict package signature mismatches
       const signedResponse = await freighterSignTransaction(xdr, {
         network: network.toUpperCase().includes("PUBLIC")
           ? "PUBLIC"
           : "TESTNET",
-        accountToSign: resolvedPublicKey,
+        accountToSign: publicKey,
       } as any);
 
       if (
@@ -144,14 +163,17 @@ export class FreighterService {
     }
   }
 
+  /**
+   * Signs a sign-in challenge message with Freighter.
+   * @param {string} message - The challenge text from the backend.
+   * @param {string} publicKey - The account expected to sign.
+   * @returns {Promise<string>} Hex-encoded signature.
+   */
   async signMessage(message: string, publicKey: string): Promise<string> {
     const response = await freighterSignMessage(message, { address: publicKey });
-    if ((response as any)?.error) {
-      throw new Error(
-        `Failed to sign message: ${(response as any).error?.message ?? (response as any).error}`,
-      );
+    if (response.error) {
+      throw new Error(`Failed to sign message: ${response.error.message ?? response.error}`);
     }
-    return toHexSignature((response as any)?.signedMessage ?? response);
+    return toHexSignature(response.signedMessage as string | Uint8Array | null);
   }
 }
-
